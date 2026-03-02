@@ -13,12 +13,14 @@ import {
   Sun,
   Moon,
   Monitor,
+  ClipboardList,
 } from 'lucide-react'
 
 const navItems = [
   { path: '/carga', label: 'Carga', icon: PlusCircle, description: 'Nuevo registro' },
   { path: '/detallado', label: 'Detallado', icon: Table2, description: 'Gastos por concepto' },
   { path: '/evolucion', label: 'Evolución', icon: TrendingUp, description: 'Ingresos vs Gastos' },
+  { path: '/historial', label: 'Historial', icon: ClipboardList, description: 'Ver y editar registros' },
 ]
 
 const themeConfig = {
@@ -121,19 +123,21 @@ const styles = {
   }),
   mobileToggle: {
     position: 'fixed',
-    top: 14,
-    left: 14,
+    top: 12,
+    left: 12,
     zIndex: 60,
-    width: 40,
-    height: 40,
-    borderRadius: 'var(--radius-md)',
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border-default)',
+    width: 36,
+    height: 36,
+    borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--border-subtle)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    color: 'var(--text-secondary)',
+    color: 'var(--text-muted)',
+    boxShadow: 'var(--shadow-sm)',
+    opacity: 0.85,
   }
 }
 

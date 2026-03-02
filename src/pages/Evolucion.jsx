@@ -110,11 +110,21 @@ export default function Evolucion() {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       if (!monthly[key]) return
 
-      const amount = currency === 'USD'
-        ? (parseFloat(t.amount_usd) || 0)
-        : (t.currency === 'ARS'
-          ? (parseFloat(t.amount) || 0)
-          : (parseFloat(t.amount) || 0) * (parseFloat(t.exchange_rate) || 0))
+      let amount = 0
+      if (currency === 'USD') {
+        if (t.amount_usd) amount = parseFloat(t.amount_usd)
+        else if (t.currency === 'USD') amount = parseFloat(t.amount) || 0
+        else {
+          const rate = parseFloat(t.exchange_rate)
+          amount = rate ? (parseFloat(t.amount) || 0) / rate : 0
+        }
+      } else {
+        if (t.currency === 'ARS') amount = parseFloat(t.amount) || 0
+        else {
+          const rate = parseFloat(t.exchange_rate)
+          amount = rate ? (parseFloat(t.amount) || 0) * rate : 0
+        }
+      }
 
       if (t.type === 'income') {
         monthly[key].income += amount
@@ -173,7 +183,7 @@ export default function Evolucion() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{
+      <div className="page-header" style={{
         padding: '20px 24px 16px',
         borderBottom: '1px solid var(--border-subtle)',
         flexShrink: 0,

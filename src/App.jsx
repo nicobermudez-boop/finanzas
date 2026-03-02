@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
 import Detallado from './pages/Detallado'
 import Evolucion from './pages/Evolucion'
+import Historial from './pages/Historial'
 import Carga from './pages/Carga'
 
 function AppLayout() {
@@ -32,6 +33,7 @@ function AppLayout() {
           <Route path="/carga" element={<Carga />} />
           <Route path="/detallado" element={<Detallado />} />
           <Route path="/evolucion" element={<Evolucion />} />
+          <Route path="/historial" element={<Historial />} />
           <Route path="*" element={<Navigate to="/carga" replace />} />
         </Routes>
       </main>

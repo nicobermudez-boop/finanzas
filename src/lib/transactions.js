@@ -134,7 +134,7 @@ export async function createTransaction(tx, userId) {
 }
 
 // Get recent transactions
-export async function getRecentTransactions(userId, limit = 15) {
+export async function getRecentTransactions(userId, limit = 3) {
   const { data, error } = await supabase
     .from('transactions')
     .select(`

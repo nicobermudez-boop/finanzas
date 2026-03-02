@@ -334,11 +334,19 @@ export default function Detallado() {
     // Get amount in selected currency
     const getAmount = (t) => {
       if (currency === 'USD') {
-        return parseFloat(t.amount_usd) || 0
+        // If amount_usd exists, use it; if currency is USD and amount_usd is null, use amount directly
+        if (t.amount_usd) return parseFloat(t.amount_usd)
+        if (t.currency === 'USD') return parseFloat(t.amount) || 0
+        // ARS transaction without amount_usd: try to convert
+        const rate = parseFloat(t.exchange_rate)
+        return rate ? (parseFloat(t.amount) || 0) / rate : 0
       } else {
         if (t.currency === 'ARS') return parseFloat(t.amount) || 0
-        // USD transaction → convert to ARS
-        return (parseFloat(t.amount) || 0) * (parseFloat(t.exchange_rate) || 0)
+        // USD transaction → convert to ARS (if no rate, show 0)
+        const rate = parseFloat(t.exchange_rate)
+        if (rate) return (parseFloat(t.amount) || 0) * rate
+        // No rate available — can't convert, return 0
+        return 0
       }
     }
 
@@ -488,7 +496,7 @@ export default function Detallado() {
       overflow: 'hidden',
     }}>
       {/* Header */}
-      <div style={{
+      <div className="page-header" style={{
         padding: '20px 24px 16px',
         borderBottom: '1px solid var(--border-subtle)',
         flexShrink: 0,
