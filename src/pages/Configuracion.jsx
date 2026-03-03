@@ -11,7 +11,7 @@ const TABS = [
 ]
 
 // ─── Reusable CRUD List ─────────────────────────────────────────
-function CrudList({ items, onAdd, onRename, onArchive, onRestore, onDelete, entityName, showParent, parentLabel }) {
+function CrudList({ items, onAdd, onRename, onArchive, onRestore, onDelete, entityName, showParent, onNavigate }) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [editId, setEditId] = useState(null)
@@ -83,6 +83,7 @@ function CrudList({ items, onAdd, onRename, onArchive, onRestore, onDelete, enti
                 {item.txCount > 0 && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>{item.txCount} tx</span>}
                 <button onClick={() => { setEditId(item.id); setEditName(item.name) }} style={btnSm()} title="Renombrar"><Pencil size={13} /></button>
                 <button onClick={() => onArchive(item.id)} style={btnSm('var(--color-expense-light)')} title="Archivar"><Archive size={13} /></button>
+                {onNavigate && <span onClick={() => onNavigate(item.id)} style={{ cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }}><ChevronRight size={14} /></span>}
               </>
             )}
           </div>
@@ -272,36 +273,12 @@ function CategoriesTab({ user }) {
         {!selectedCat ? (
           <>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>Categorías de {catType === 'expense' ? 'Gastos' : 'Ingresos'}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {catItems.filter(c => !c.archived).map(c => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  onClick={() => setSelectedCat(c.id)}>
-                  <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{c.icon ? `${c.icon} ` : ''}{c.name}</div>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>{c.txCount} tx</span>
-                  <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
-                </div>
-              ))}
-            </div>
-            <CrudList items={catItems} onAdd={addCat} onRename={renameCat} onArchive={archiveCat} onRestore={restoreCat} onDelete={deleteCat} entityName="categoría" />
+            <CrudList items={catItems} onAdd={addCat} onRename={renameCat} onArchive={archiveCat} onRestore={restoreCat} onDelete={deleteCat} entityName="categoría" onNavigate={(id) => setSelectedCat(id)} />
           </>
         ) : !selectedSub ? (
           <>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>Subcategorías de {selectedCatName}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {subItems.filter(s => !s.archived).map(s => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  onClick={() => setSelectedSub(s.id)}>
-                  <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{s.name}</div>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>{s.txCount} tx</span>
-                  <ChevronRight size={14} style={{ color: 'var(--text-dim)' }} />
-                </div>
-              ))}
-            </div>
-            <CrudList items={subItems} onAdd={addSub} onRename={renameSub} onArchive={archiveSub} onRestore={restoreSub} onDelete={deleteSub} entityName="subcategoría" />
+            <CrudList items={subItems} onAdd={addSub} onRename={renameSub} onArchive={archiveSub} onRestore={restoreSub} onDelete={deleteSub} entityName="subcategoría" onNavigate={(id) => setSelectedSub(id)} />
           </>
         ) : (
           <>
