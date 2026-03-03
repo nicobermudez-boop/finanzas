@@ -75,22 +75,23 @@ export default function Carga() {
       const { data: cats } = await supabase
         .from('categories')
         .select(`
-          id, name, type, icon, sort_order,
-          subcategories(id, name, sort_order,
-            concepts(id, name, sort_order)
+          id, name, type, icon, sort_order, archived,
+          subcategories(id, name, sort_order, archived,
+            concepts(id, name, sort_order, archived)
           )
         `)
         .eq('user_id', user.id)
         .order('sort_order')
 
-      // Sort nested data alphabetically
-      const sorted = (cats || []).map(c => ({
+      // Sort nested data alphabetically and filter archived
+      const sorted = (cats || []).filter(c => !c.archived).map(c => ({
         ...c,
         subcategories: (c.subcategories || [])
+          .filter(s => !s.archived)
           .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'))
           .map(s => ({
             ...s,
-            concepts: (s.concepts || []).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'))
+            concepts: (s.concepts || []).filter(cn => !cn.archived).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'))
           }))
       })).sort((a, b) => {
         if (a.type !== b.type) return a.type === 'expense' ? -1 : 1
@@ -99,15 +100,16 @@ export default function Carga() {
 
       setCategories(sorted)
 
-      // Load household members
-      const { data: mem } = await supabase
-        .from('household_members')
-        .select('name')
-        .eq('user_id', user.id)
+      // Load persons
+      const { data: persData } = await supabase
+        .from('persons')
+        .select('*')
+        .eq('archived', false)
+        .order('name')
 
-      const memberNames = (mem || []).map(m => m.name)
-      setMembers(memberNames)
-      if (memberNames.length > 0) setPerson(memberNames[0])
+      const personsList = persData || []
+      setMembers(personsList)
+      if (personsList.length > 0) setPerson(personsList[0].id)
 
       // Load MEP rate
       const rate = await getLatestRate()
@@ -186,7 +188,8 @@ export default function Carga() {
         description: desc || null,
         paymentMethod: type === 'expense' ? pay : null,
         installments: type === 'expense' && pay === 'Crédito' ? inst : 1,
-        person,
+        person: members.find(m => m.id === person)?.name || null,
+        personId: person,
         destination: isV ? dest : null,
         isRecurring: isRec,
         recurrenceFrequency: isRec ? rFreq : null,
@@ -268,8 +271,8 @@ export default function Carga() {
               <input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
             <div><div className="sl">Quién</div>
               <div className="pp">
-                {members.map(p => <button key={p} className={`pb ${person === p ? 's' : ''}`}
-                  onClick={() => setPerson(p)}>{p}</button>)}
+                {members.map(p => <button key={p.id} className={`pb ${person === p.id ? 's' : ''}`}
+                  onClick={() => setPerson(p.id)}>{p.name}</button>)}
               </div></div>
           </div>
         </div>

@@ -20,6 +20,7 @@ export async function createTransaction(tx, userId) {
     description: tx.description || null,
     payment_method: tx.paymentMethod || null,
     person: tx.person,
+    person_id: tx.personId || null,
     destination: tx.destination || null,
     is_recurring: tx.isRecurring || false,
   }
