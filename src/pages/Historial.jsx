@@ -243,6 +243,7 @@ export default function Historial() {
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Concepto</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Descripción</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Persona</th>
+                <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>FX Rate</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'center', width: 80 }}>Acciones</th>
               </tr>
             </thead>
@@ -291,6 +292,9 @@ export default function Historial() {
                       )}
                     </td>
                     <td style={s.cellMuted}>{tx.person || '–'}</td>
+                    <td style={s.cellMono}>
+                      {tx.exchange_rate ? parseFloat(tx.exchange_rate).toLocaleString('es-AR', { maximumFractionDigits: 2 }) : <span style={{ color: 'var(--text-dim)' }}>–</span>}
+                    </td>
                     <td style={{ ...s.cell, textAlign: 'center' }}>
                       {isDeleting ? (
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>

@@ -6,6 +6,8 @@ import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
 import Detallado from './pages/Detallado'
 import Evolucion from './pages/Evolucion'
+import Dashboard from './pages/Dashboard'
+import Gastos from './pages/Gastos'
 import Historial from './pages/Historial'
 import Configuracion from './pages/Configuracion'
 import Carga from './pages/Carga'
@@ -32,8 +34,10 @@ function AppLayout() {
       }}>
         <Routes>
           <Route path="/carga" element={<Carga />} />
-          <Route path="/detallado" element={<Detallado />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/evolucion" element={<Evolucion />} />
+          <Route path="/gastos" element={<Gastos />} />
+          <Route path="/detallado" element={<Detallado />} />
           <Route path="/historial" element={<Historial />} />
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path="*" element={<Navigate to="/carga" replace />} />

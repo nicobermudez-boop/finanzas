@@ -15,14 +15,32 @@ import {
   Monitor,
   ClipboardList,
   Settings,
+  LayoutDashboard,
+  Search,
 } from 'lucide-react'
 
-const navItems = [
-  { path: '/carga', label: 'Carga', icon: PlusCircle, description: 'Nuevo registro' },
-  { path: '/detallado', label: 'Detallado', icon: Table2, description: 'Gastos por concepto' },
-  { path: '/evolucion', label: 'Evolución', icon: TrendingUp, description: 'Ingresos vs Gastos' },
-  { path: '/historial', label: 'Historial', icon: ClipboardList, description: 'Ver y editar registros' },
-  { path: '/configuracion', label: 'Config', icon: Settings, description: 'Cotizaciones y ajustes' },
+const navSections = [
+  {
+    items: [
+      { path: '/carga', label: 'Carga', icon: PlusCircle },
+    ]
+  },
+  {
+    label: 'Analytics',
+    items: [
+      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/evolucion', label: 'Evolución', icon: TrendingUp },
+      { path: '/gastos', label: 'Gastos', icon: Search },
+      { path: '/detallado', label: 'Detallado', icon: Table2 },
+    ]
+  },
+  {
+    label: 'Ajustes',
+    items: [
+      { path: '/historial', label: 'Historial', icon: ClipboardList },
+      { path: '/configuracion', label: 'Config', icon: Settings },
+    ]
+  },
 ]
 
 const themeConfig = {
@@ -187,40 +205,59 @@ export default function Sidebar() {
       </div>
 
       <nav style={styles.nav}>
-        {navItems.map(item => {
-          const active = location.pathname === item.path
-          const Icon = item.icon
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNav(item.path)}
-              style={styles.navItem(active, isCollapsed)}
-              onMouseEnter={e => {
-                if (!active) {
-                  e.currentTarget.style.background = 'var(--bg-hover)'
-                  e.currentTarget.style.color = 'var(--text-primary)'
-                }
-              }}
-              onMouseLeave={e => {
-                if (!active) {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = 'var(--text-secondary)'
-                }
-              }}
-              title={isCollapsed ? item.label : ''}
-            >
-              <Icon style={styles.navIcon} />
-              {!isCollapsed && <span>{item.label}</span>}
-              {active && (
-                <div style={{
-                  position: 'absolute', left: 0, top: '50%',
-                  transform: 'translateY(-50%)', width: 3, height: 20,
-                  borderRadius: '0 3px 3px 0', background: 'var(--color-accent)',
-                }} />
-              )}
-            </button>
-          )
-        })}
+        {navSections.map((section, si) => (
+          <div key={si}>
+            {section.label && !isCollapsed && (
+              <div style={{
+                fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                letterSpacing: '0.1em', color: 'var(--text-dim)',
+                padding: '16px 14px 6px', userSelect: 'none',
+              }}>
+                {section.label}
+              </div>
+            )}
+            {section.label && isCollapsed && (
+              <div style={{
+                height: 1, background: 'var(--border-subtle)',
+                margin: '8px 10px',
+              }} />
+            )}
+            {section.items.map(item => {
+              const active = location.pathname === item.path
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => handleNav(item.path)}
+                  style={styles.navItem(active, isCollapsed)}
+                  onMouseEnter={e => {
+                    if (!active) {
+                      e.currentTarget.style.background = 'var(--bg-hover)'
+                      e.currentTarget.style.color = 'var(--text-primary)'
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!active) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = 'var(--text-secondary)'
+                    }
+                  }}
+                  title={isCollapsed ? item.label : ''}
+                >
+                  <Icon style={styles.navIcon} />
+                  {!isCollapsed && <span>{item.label}</span>}
+                  {active && (
+                    <div style={{
+                      position: 'absolute', left: 0, top: '50%',
+                      transform: 'translateY(-50%)', width: 3, height: 20,
+                      borderRadius: '0 3px 3px 0', background: 'var(--color-accent)',
+                    }} />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       <div style={styles.footer}>
