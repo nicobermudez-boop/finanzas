@@ -115,7 +115,7 @@ export default function Gastos() {
     ;(async () => {
       setLoading(true)
       const [txR, catR, subR, conR] = await Promise.all([
-        supabase.from('transactions').select('*, categories(name)').order('date', { ascending: true }),
+        supabase.from('transactions').select('*, categories(name)').order('date', { ascending: true }).limit(10000),
         supabase.from('categories').select('*').eq('type', 'expense'),
         supabase.from('subcategories').select('*'),
         supabase.from('concepts').select('*'),
@@ -135,8 +135,13 @@ export default function Gastos() {
   // Conditional filter options
   const availableSubs = useMemo(() => {
     if (filterCats.length !== 1) return []
+    const selectedCat = catMap[filterCats[0]]
+    if (selectedCat?.name === 'Viajes') {
+      const dests = [...new Set(transactions.filter(t => t.category_id === filterCats[0] && t.destination).map(t => t.destination))]
+      return dests.sort((a, b) => a.localeCompare(b, 'es')).map(d => ({ id: `dest_${d}`, name: d }))
+    }
     return subcategories.filter(s => s.category_id === filterCats[0]).sort((a, b) => a.name.localeCompare(b.name, 'es'))
-  }, [filterCats, subcategories])
+  }, [filterCats, subcategories, transactions, catMap])
 
   const availableCons = useMemo(() => {
     if (filterCats.length !== 1 || filterSubs.length !== 1) return []
@@ -193,7 +198,15 @@ export default function Gastos() {
     const applyF = (arr) => {
       let r = arr
       if (filterCats.length) r = r.filter(t => filterCats.includes(t.category_id))
-      if (filterSubs.length) r = r.filter(t => filterSubs.includes(t.subcategory_id))
+      if (filterSubs.length) {
+        const destFilters = filterSubs.filter(s => String(s).startsWith('dest_')).map(s => String(s).replace('dest_', ''))
+        const subIdFilters = filterSubs.filter(s => !String(s).startsWith('dest_'))
+        r = r.filter(t => {
+          if (destFilters.length && destFilters.includes(t.destination)) return true
+          if (subIdFilters.length && subIdFilters.includes(t.subcategory_id)) return true
+          return false
+        })
+      }
       if (filterCons.length) r = r.filter(t => filterCons.includes(t.concept_id))
       return r
     }
@@ -236,8 +249,12 @@ export default function Gastos() {
     const dMap = {}
     curE.forEach(t => {
       let key, name
+      const isViajes = catMap[t.category_id]?.name === 'Viajes'
       if (distGroup === 'category') { key = t.category_id; name = catMap[t.category_id]?.name || '\u2013' }
-      else if (distGroup === 'subcategory') { key = t.subcategory_id; name = subMap[t.subcategory_id]?.name || '\u2013' }
+      else if (distGroup === 'subcategory') {
+        if (isViajes && t.destination) { key = `dest_${t.destination}`; name = t.destination }
+        else { key = t.subcategory_id; name = subMap[t.subcategory_id]?.name || '\u2013' }
+      }
       else { key = t.concept_id; name = conMap[t.concept_id]?.name || '\u2013' }
       if (!dMap[key]) dMap[key] = { name, value: 0 }
       dMap[key].value += getAmount(t, currency)
@@ -252,9 +269,13 @@ export default function Gastos() {
       const incTotal = incArr.reduce((s, t) => s + getAmount(t, currency), 0)
       arr.forEach(t => {
         let key, name, parent
+        const isViajes = catMap[t.category_id]?.name === 'Viajes'
         if (tableGroup === 'category') { key = t.category_id; name = catMap[t.category_id]?.name || '\u2013'; parent = '' }
-        else if (tableGroup === 'subcategory') { key = t.subcategory_id; name = subMap[t.subcategory_id]?.name || '\u2013'; parent = catMap[t.category_id]?.name || '\u2013' }
-        else if (tableGroup === 'concept') { key = t.concept_id; name = conMap[t.concept_id]?.name || '\u2013'; parent = subMap[t.subcategory_id]?.name || '\u2013' }
+        else if (tableGroup === 'subcategory') {
+          if (isViajes && t.destination) { key = `dest_${t.destination}`; name = t.destination; parent = 'Viajes' }
+          else { key = t.subcategory_id; name = subMap[t.subcategory_id]?.name || '\u2013'; parent = catMap[t.category_id]?.name || '\u2013' }
+        }
+        else if (tableGroup === 'concept') { key = t.concept_id; name = conMap[t.concept_id]?.name || '\u2013'; parent = isViajes && t.destination ? t.destination : subMap[t.subcategory_id]?.name || '\u2013' }
         else { key = `${t.concept_id}||${t.description || conMap[t.concept_id]?.name || '(sin desc)'}`; name = t.description || conMap[t.concept_id]?.name || '(sin desc)'; parent = conMap[t.concept_id]?.name || '\u2013' }
         if (!gMap[key]) gMap[key] = { name, parent, total: 0 }
         gMap[key].total += getAmount(t, currency)

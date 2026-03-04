@@ -71,7 +71,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      const { data } = await supabase.from('transactions').select('*, categories(name)').order('date', { ascending: true })
+      const { data } = await supabase.from('transactions').select('*, categories(name)').order('date', { ascending: true }).limit(10000)
       setTransactions(data || [])
       setLoading(false)
     }

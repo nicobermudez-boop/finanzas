@@ -78,7 +78,7 @@ export default function Detallado() {
       const fromDate = new Date(now.getFullYear(), now.getMonth() - monthRange + 1, 1)
       const dateStr = fromDate.toISOString().split('T')[0]
       const [txRes, catRes, subcatRes, conceptRes] = await Promise.all([
-        supabase.from('transactions').select('*').eq('type', 'expense').gte('date', dateStr).order('date', { ascending: true }),
+        supabase.from('transactions').select('*').eq('type', 'expense').gte('date', dateStr).order('date', { ascending: true }).limit(10000),
         supabase.from('categories').select('*').eq('type', 'expense'),
         supabase.from('subcategories').select('*'),
         supabase.from('concepts').select('*'),
@@ -100,9 +100,13 @@ export default function Detallado() {
   const catOptions = useMemo(() => [...new Set(categories.map(c => c.name))].sort((a, b) => a.localeCompare(b, 'es')), [categories])
   const subcatOptions = useMemo(() => {
     if (filterCat === 'all') return [...new Set(subcategories.map(s => s.name))].sort((a, b) => a.localeCompare(b, 'es'))
+    if (filterCat === 'Viajes') {
+      const dests = [...new Set(transactions.filter(t => catMap[t.category_id]?.name === 'Viajes' && t.destination).map(t => t.destination))]
+      return dests.sort((a, b) => a.localeCompare(b, 'es'))
+    }
     const catIds = categories.filter(c => c.name === filterCat).map(c => c.id)
     return [...new Set(subcategories.filter(s => catIds.includes(s.category_id)).map(s => s.name))].sort((a, b) => a.localeCompare(b, 'es'))
-  }, [filterCat, categories, subcategories])
+  }, [filterCat, categories, subcategories, transactions, catMap])
   const conceptOptions = useMemo(() => {
     let filtered = concepts
     if (filterSubcat !== 'all') {
@@ -134,8 +138,13 @@ export default function Detallado() {
         if (!cat || cat.name !== filterCat) return false
       }
       if (filterSubcat !== 'all') {
-        const sub = subcatMap[t.subcategory_id]
-        if (!sub || sub.name !== filterSubcat) return false
+        const isViajes = catMap[t.category_id]?.name === 'Viajes'
+        if (isViajes) {
+          if (t.destination !== filterSubcat) return false
+        } else {
+          const sub = subcatMap[t.subcategory_id]
+          if (!sub || sub.name !== filterSubcat) return false
+        }
       }
       if (filterConcept !== 'all') {
         const con = conceptMap[t.concept_id]
@@ -165,7 +174,8 @@ export default function Detallado() {
     const rowMap = {}
     filtered.forEach(t => {
       const catName = catMap[t.category_id]?.name || 'Sin categoría'
-      const subcatName = subcatMap[t.subcategory_id]?.name || 'Sin subcategoría'
+      const isViajes = catName === 'Viajes'
+      const subcatName = isViajes && t.destination ? t.destination : (subcatMap[t.subcategory_id]?.name || 'Sin subcategoría')
       const conceptName = conceptMap[t.concept_id]?.name || 'Sin concepto'
       const desc = t.description || conceptName
       const key = `${catName}||${subcatName}||${conceptName}||${desc}`

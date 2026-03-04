@@ -43,7 +43,7 @@ export default function Historial() {
     async function fetchData() {
       setLoading(true)
       const [txRes, catRes, subRes, conRes] = await Promise.all([
-        supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10000),
         supabase.from('categories').select('*'),
         supabase.from('subcategories').select('*'),
         supabase.from('concepts').select('*'),
