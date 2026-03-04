@@ -33,6 +33,10 @@ export default function Historial() {
   const [editData, setEditData] = useState({})
   const [deletingId, setDeletingId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [colFilters, setColFilters] = useState({
+    date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '',
+  })
+  const setFilter = (key, val) => { setColFilters(prev => ({ ...prev, [key]: val })); setPage(0) }
 
   // Fetch all data
   useEffect(() => {
@@ -57,10 +61,30 @@ export default function Historial() {
   const subMap = useMemo(() => Object.fromEntries(subcategories.map(s => [s.id, s])), [subcategories])
   const conMap = useMemo(() => Object.fromEntries(concepts.map(c => [c.id, c])), [concepts])
 
-  const filtered = useMemo(() =>
-    transactions.filter(t => t.type === tab),
-    [transactions, tab]
-  )
+  const filtered = useMemo(() => {
+    let data = transactions.filter(t => t.type === tab)
+    const cf = colFilters
+
+    if (cf.date) data = data.filter(t => (t.date || '').includes(cf.date))
+    if (cf.amount) data = data.filter(t => String(t.amount || '').includes(cf.amount))
+    if (cf.category) data = data.filter(t => {
+      const name = catMap[t.category_id]?.name || t.income_concept || ''
+      return name === cf.category
+    })
+    if (cf.subcategory) data = data.filter(t => {
+      const name = subMap[t.subcategory_id]?.name || t.income_subtype || ''
+      return name === cf.subcategory
+    })
+    if (cf.concept) data = data.filter(t => {
+      const name = conMap[t.concept_id]?.name || ''
+      return name.toLowerCase().includes(cf.concept.toLowerCase())
+    })
+    if (cf.description) data = data.filter(t => (t.description || '').toLowerCase().includes(cf.description.toLowerCase()))
+    if (cf.person) data = data.filter(t => (t.person || '') === cf.person)
+    if (cf.fxRate) data = data.filter(t => String(t.exchange_rate || '').includes(cf.fxRate))
+
+    return data
+  }, [transactions, tab, colFilters, catMap, subMap, conMap])
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const pageData = useMemo(() =>
@@ -68,8 +92,17 @@ export default function Historial() {
     [filtered, page]
   )
 
-  // Reset page on tab change
-  useEffect(() => setPage(0), [tab])
+  // Reset page and filters on tab change
+  useEffect(() => { setPage(0); setColFilters({ date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '' }) }, [tab])
+
+  // Unique values for dropdowns
+  const uniqueVals = useMemo(() => {
+    const data = transactions.filter(t => t.type === tab)
+    const cats = [...new Set(data.map(t => catMap[t.category_id]?.name || t.income_concept || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const subs = [...new Set(data.map(t => subMap[t.subcategory_id]?.name || t.income_subtype || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const pers = [...new Set(data.map(t => t.person).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    return { cats, subs, pers }
+  }, [transactions, tab, catMap, subMap])
 
   // Edit handlers
   const startEdit = (tx) => {
@@ -124,7 +157,7 @@ export default function Historial() {
 
   // CSV Export
   const exportCSV = useCallback(() => {
-    const headers = ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Categoría', 'Subcategoría', 'Concepto', 'Descripción', 'Medio de Pago', 'Cuotas', 'Cuota N°', 'Persona', 'Destino', 'Recurrente', 'Monto USD', 'Cotización']
+    const headers = ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Categoria', 'Subcategoria', 'Concepto', 'Descripcion', 'Medio de Pago', 'Cuotas', 'Cuota N', 'Persona', 'Destino', 'Recurrente', 'Monto USD', 'Cotizacion']
     const rows = filtered.map(t => [
       t.date,
       t.type === 'expense' ? 'Gasto' : 'Ingreso',
@@ -162,6 +195,8 @@ export default function Historial() {
     cellMono: { padding: '8px 10px', fontSize: 12, borderBottom: '1px solid var(--border-subtle)', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace", textAlign: 'right' },
     cellMuted: { padding: '8px 10px', fontSize: 12, borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', whiteSpace: 'nowrap' },
     editInput: { padding: '4px 8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' },
+    filterInput: { width: '100%', padding: '4px 8px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 11, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
+    filterSelect: { width: '100%', padding: '4px 6px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 11, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
     iconBtn: (color) => ({
       background: 'none', border: 'none', cursor: 'pointer', padding: 4,
       color: 'var(--text-muted)', transition: 'color 0.15s',
@@ -245,6 +280,50 @@ export default function Historial() {
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Persona</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>FX Rate</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'center', width: 80 }}>Acciones</th>
+              </tr>
+              {/* Filter row */}
+              <tr style={{ position: 'sticky', top: 33, zIndex: 4, background: 'var(--bg-secondary)' }}>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <input type="text" value={colFilters.date} onChange={e => setFilter('date', e.target.value)} placeholder="YYYY-MM-DD" style={s.filterInput} />
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <input type="text" value={colFilters.amount} onChange={e => setFilter('amount', e.target.value)} placeholder="Monto" style={{ ...s.filterInput, textAlign: 'right' }} />
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <select value={colFilters.category} onChange={e => setFilter('category', e.target.value)} style={s.filterSelect}>
+                    <option value="">Todas</option>
+                    {uniqueVals.cats.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <select value={colFilters.subcategory} onChange={e => setFilter('subcategory', e.target.value)} style={s.filterSelect}>
+                    <option value="">Todas</option>
+                    {uniqueVals.subs.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <input type="text" value={colFilters.concept} onChange={e => setFilter('concept', e.target.value)} placeholder="Buscar..." style={s.filterInput} />
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <input type="text" value={colFilters.description} onChange={e => setFilter('description', e.target.value)} placeholder="Buscar..." style={s.filterInput} />
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <select value={colFilters.person} onChange={e => setFilter('person', e.target.value)} style={s.filterSelect}>
+                    <option value="">Todas</option>
+                    {uniqueVals.pers.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <input type="text" value={colFilters.fxRate} onChange={e => setFilter('fxRate', e.target.value)} placeholder="..." style={{ ...s.filterInput, textAlign: 'right' }} />
+                </td>
+                <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+                  {Object.values(colFilters).some(v => v) && (
+                    <button onClick={() => setColFilters({ date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '' })}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-expense-light)', fontSize: 11, fontFamily: 'inherit', padding: '2px 6px' }}>
+                      Limpiar
+                    </button>
+                  )}
+                </td>
               </tr>
             </thead>
             <tbody>

@@ -528,7 +528,7 @@ function ImportTab({ user }) {
   const [importResult, setImportResult] = useState(null)
   const [fileName, setFileName] = useState('')
 
-  const EXPECTED_HEADERS = ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Categoría', 'Subcategoría', 'Concepto', 'Descripción', 'Medio de Pago', 'Cuotas', 'Cuota N°', 'Persona', 'Destino', 'Recurrente', 'Monto USD', 'Cotización']
+  const EXPECTED_HEADERS = ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Categoria', 'Subcategoria', 'Concepto', 'Descripcion', 'Medio de Pago', 'Cuotas', 'Cuota N', 'Persona', 'Destino', 'Recurrente', 'Monto USD', 'Cotizacion']
 
   useEffect(() => {
     loadLookups()
@@ -571,13 +571,10 @@ function ImportTab({ user }) {
     const file = e.target.files?.[0]
     if (!file) return
     setFileName(file.name)
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const text = ev.target.result
+    const tryParse = (text) => {
       const rows = parseCSV(text)
       if (rows.length < 2) { setValidations([{ row: 0, errors: ['El archivo está vacío o solo tiene headers'] }]); setStep('preview'); return }
 
-      // Check headers
       const headers = rows[0]
       const headerErrors = []
       EXPECTED_HEADERS.forEach((h, i) => {
@@ -596,6 +593,21 @@ function ImportTab({ user }) {
       setRawRows(dataRows)
       validateRows(dataRows)
       setStep('preview')
+    }
+
+    // Try UTF-8 first
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target.result
+      // Check for replacement char (encoding issue)
+      if (text.includes('\ufffd') || text.includes('�')) {
+        // Retry with Latin1
+        const reader2 = new FileReader()
+        reader2.onload = (ev2) => tryParse(ev2.target.result)
+        reader2.readAsText(file, 'ISO-8859-1')
+      } else {
+        tryParse(text)
+      }
     }
     reader.readAsText(file, 'UTF-8')
   }
