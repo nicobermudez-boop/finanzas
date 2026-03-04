@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { RefreshCw, Loader2, CheckCircle, AlertCircle, Clock, Plus, Pencil, ArrowRightLeft, Trash2, ChevronRight } from 'lucide-react'
+import { RefreshCw, Loader2, CheckCircle, AlertCircle, Clock, Plus, Pencil, ArrowRightLeft, Trash2, ChevronRight, Upload } from 'lucide-react'
 
 const TABS = [
   { key: 'rates', label: '💱 Cotizaciones' },
   { key: 'categories', label: '📂 Categorías' },
   { key: 'persons', label: '👤 Personas' },
+  { key: 'import', label: '📥 Importar' },
   { key: 'account', label: '🔒 Cuenta' },
 ]
 
@@ -508,8 +509,356 @@ export default function Configuracion() {
         {activeTab === 'rates' && <RatesTab />}
         {activeTab === 'categories' && <CategoriesTab user={user} />}
         {activeTab === 'persons' && <PersonsTab user={user} />}
+        {activeTab === 'import' && <ImportTab user={user} />}
         {activeTab === 'account' && <AccountTab user={user} />}
       </div>
     </div>
   )
+}
+// ─── Import Tab ─────────────────────────────────────────
+function ImportTab({ user }) {
+  const [step, setStep] = useState('upload') // upload | preview | importing | done
+  const [rawRows, setRawRows] = useState([])
+  const [validations, setValidations] = useState([])
+  const [categories, setCategories] = useState([])
+  const [subcategories, setSubcategories] = useState([])
+  const [concepts, setConcepts] = useState([])
+  const [persons, setPersons] = useState([])
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState(null)
+  const [fileName, setFileName] = useState('')
+
+  const EXPECTED_HEADERS = ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Categoría', 'Subcategoría', 'Concepto', 'Descripción', 'Medio de Pago', 'Cuotas', 'Cuota N°', 'Persona', 'Destino', 'Recurrente', 'Monto USD', 'Cotización']
+
+  useEffect(() => {
+    loadLookups()
+  }, [])
+
+  const loadLookups = async () => {
+    const [catR, subR, conR, perR] = await Promise.all([
+      supabase.from('categories').select('id, name, type'),
+      supabase.from('subcategories').select('id, name, category_id'),
+      supabase.from('concepts').select('id, name, subcategory_id'),
+      supabase.from('persons').select('id, name'),
+    ])
+    setCategories(catR.data || [])
+    setSubcategories(subR.data || [])
+    setConcepts(conR.data || [])
+    setPersons(perR.data || [])
+  }
+
+  const parseCSV = (text) => {
+    const lines = text.split('\n').filter(l => l.trim())
+    const result = []
+    for (const line of lines) {
+      const row = []
+      let current = '', inQuotes = false
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i]
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') { current += '"'; i++ }
+          else inQuotes = !inQuotes
+        } else if (ch === ',' && !inQuotes) { row.push(current.trim()); current = '' }
+        else current += ch
+      }
+      row.push(current.trim())
+      result.push(row)
+    }
+    return result
+  }
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target.result
+      const rows = parseCSV(text)
+      if (rows.length < 2) { setValidations([{ row: 0, errors: ['El archivo está vacío o solo tiene headers'] }]); setStep('preview'); return }
+
+      // Check headers
+      const headers = rows[0]
+      const headerErrors = []
+      EXPECTED_HEADERS.forEach((h, i) => {
+        if (!headers[i] || headers[i].toLowerCase() !== h.toLowerCase()) {
+          headerErrors.push(`Columna ${i + 1}: esperaba "${h}", encontró "${headers[i] || '(vacío)'}"`)
+        }
+      })
+      if (headerErrors.length > 0) {
+        setValidations([{ row: 0, errors: headerErrors }])
+        setRawRows([])
+        setStep('preview')
+        return
+      }
+
+      const dataRows = rows.slice(1)
+      setRawRows(dataRows)
+      validateRows(dataRows)
+      setStep('preview')
+    }
+    reader.readAsText(file, 'UTF-8')
+  }
+
+  const validateRows = (rows) => {
+    const vals = []
+    rows.forEach((row, idx) => {
+      const errors = []
+      const [fecha, tipo, monto, moneda, cat, sub, con, desc, medioPago, cuotas, cuotaN, persona, destino, recurrente, montoUsd, cotizacion] = row
+
+      // Required fields
+      if (!fecha) errors.push('Fecha vacía')
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) errors.push(`Fecha inválida: "${fecha}" (esperado YYYY-MM-DD)`)
+
+      if (!tipo) errors.push('Tipo vacío')
+      else if (!['Gasto', 'Ingreso'].includes(tipo)) errors.push(`Tipo inválido: "${tipo}" (Gasto/Ingreso)`)
+
+      if (!monto) errors.push('Monto vacío')
+      else if (isNaN(parseFloat(monto))) errors.push(`Monto no numérico: "${monto}"`)
+
+      if (!moneda) errors.push('Moneda vacía')
+      else if (!['ARS', 'USD'].includes(moneda)) errors.push(`Moneda inválida: "${moneda}" (ARS/USD)`)
+
+      // Category validation for expenses
+      if (tipo === 'Gasto') {
+        if (cat) {
+          const catMatch = categories.find(c => c.name.toLowerCase() === cat.toLowerCase() && c.type === 'expense')
+          if (!catMatch) errors.push(`Categoría no encontrada: "${cat}"`)
+          else {
+            if (sub) {
+              const subMatch = subcategories.find(s => s.name.toLowerCase() === sub.toLowerCase() && s.category_id === catMatch.id)
+              if (!subMatch) errors.push(`Subcategoría "${sub}" no existe en "${cat}"`)
+              else if (con) {
+                const conMatch = concepts.find(c => c.name.toLowerCase() === con.toLowerCase() && c.subcategory_id === subMatch.id)
+                if (!conMatch) errors.push(`Concepto "${con}" no existe en "${sub}"`)
+              }
+            }
+          }
+        }
+      }
+
+      if (tipo === 'Ingreso' && cat) {
+        const catMatch = categories.find(c => c.name.toLowerCase() === cat.toLowerCase() && c.type === 'income')
+        if (!catMatch) errors.push(`Categoría de ingreso no encontrada: "${cat}"`)
+      }
+
+      // Person validation
+      if (persona) {
+        const personMatch = persons.find(p => p.name.toLowerCase() === persona.toLowerCase())
+        if (!personMatch) errors.push(`Persona no encontrada: "${persona}"`)
+      }
+
+      // Payment method
+      if (medioPago && !['Contado', 'Crédito'].includes(medioPago)) errors.push(`Medio de pago inválido: "${medioPago}" (Contado/Crédito)`)
+
+      // Numeric fields
+      if (cuotas && isNaN(parseInt(cuotas))) errors.push(`Cuotas no numérico: "${cuotas}"`)
+      if (cuotaN && isNaN(parseInt(cuotaN))) errors.push(`Cuota N° no numérico: "${cuotaN}"`)
+      if (montoUsd && isNaN(parseFloat(montoUsd))) errors.push(`Monto USD no numérico: "${montoUsd}"`)
+      if (cotizacion && isNaN(parseFloat(cotizacion))) errors.push(`Cotización no numérico: "${cotizacion}"`)
+
+      // Recurrente
+      if (recurrente && !['Sí', 'Si', 'No', ''].includes(recurrente)) errors.push(`Recurrente inválido: "${recurrente}" (Sí/No)`)
+
+      vals.push({ row: idx + 2, errors, data: row })
+    })
+    setValidations(vals)
+  }
+
+  const errorCount = validations.filter(v => v.errors.length > 0).length
+  const validCount = validations.filter(v => v.errors.length === 0).length
+
+  const doImport = async () => {
+    setImporting(true)
+    const validRows = validations.filter(v => v.errors.length === 0)
+    let inserted = 0, failed = 0
+
+    // Build lookup maps (case-insensitive)
+    const catMap = {}; categories.forEach(c => { catMap[`${c.type}_${c.name.toLowerCase()}`] = c.id })
+    const subMap = {}; subcategories.forEach(s => { subMap[s.name.toLowerCase() + '_' + s.category_id] = s.id })
+    const conMap = {}; concepts.forEach(c => { conMap[c.name.toLowerCase() + '_' + c.subcategory_id] = c.id })
+    const perMap = {}; persons.forEach(p => { perMap[p.name.toLowerCase()] = p })
+
+    // Batch in chunks of 50
+    const chunks = []
+    for (let i = 0; i < validRows.length; i += 50) chunks.push(validRows.slice(i, i + 50))
+
+    for (const chunk of chunks) {
+      const records = chunk.map(v => {
+        const [fecha, tipo, monto, moneda, cat, sub, con, desc, medioPago, cuotas, cuotaN, persona, destino, recurrente, montoUsd, cotizacion] = v.data
+        const isExpense = tipo === 'Gasto'
+        const catType = isExpense ? 'expense' : 'income'
+        const catId = cat ? catMap[`${catType}_${cat.toLowerCase()}`] || null : null
+        const subId = sub && catId ? subMap[sub.toLowerCase() + '_' + catId] || null : null
+        const conId = con && subId ? conMap[con.toLowerCase() + '_' + subId] || null : null
+        const personObj = persona ? perMap[persona.toLowerCase()] : null
+
+        return {
+          user_id: user.id,
+          type: isExpense ? 'expense' : 'income',
+          date: fecha,
+          amount: parseFloat(monto),
+          currency: moneda,
+          category_id: isExpense ? catId : catId,
+          subcategory_id: subId || null,
+          concept_id: conId || null,
+          income_concept: !isExpense ? (cat || null) : null,
+          income_subtype: !isExpense ? (sub || null) : null,
+          description: desc || null,
+          payment_method: isExpense ? (medioPago || null) : null,
+          installments: parseInt(cuotas) || 1,
+          installment_number: parseInt(cuotaN) || 1,
+          person: persona || null,
+          person_id: personObj?.id || null,
+          destination: destino || null,
+          is_recurring: ['Sí', 'Si'].includes(recurrente),
+          exchange_rate: cotizacion ? parseFloat(cotizacion) : null,
+          amount_usd: montoUsd ? parseFloat(montoUsd) : null,
+        }
+      })
+
+      const { error } = await supabase.from('transactions').insert(records)
+      if (error) { console.error(error); failed += chunk.length }
+      else inserted += chunk.length
+    }
+
+    setImportResult({ inserted, failed, total: validRows.length })
+    setStep('done')
+    setImporting(false)
+  }
+
+  const cardS = { background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 20 }
+  const btnS = (active) => ({ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: active ? 'var(--color-accent)' : 'var(--bg-tertiary)', color: active ? '#fff' : 'var(--text-dim)', fontSize: 14, fontWeight: 600, cursor: active ? 'pointer' : 'not-allowed', fontFamily: 'inherit' })
+
+  // ── Upload step
+  if (step === 'upload') {
+    return (
+      <div>
+        <div style={cardS}>
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Importar transacciones desde CSV</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
+            El archivo debe tener el mismo formato que el export de Historial, con estas 16 columnas:<br />
+            <code style={{ fontSize: 11, color: 'var(--color-accent)', background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 4, display: 'inline-block', marginTop: 6 }}>
+              Fecha, Tipo, Monto, Moneda, Categoría, Subcategoría, Concepto, Descripción, Medio de Pago, Cuotas, Cuota N°, Persona, Destino, Recurrente, Monto USD, Cotización
+            </code>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 16, lineHeight: 1.6 }}>
+            <strong>Valores válidos:</strong><br />
+            Fecha: YYYY-MM-DD · Tipo: Gasto/Ingreso · Moneda: ARS/USD · Medio de Pago: Contado/Crédito · Recurrente: Sí/No
+          </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'var(--color-accent)', color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+            <Upload size={16} /> Seleccionar archivo CSV
+            <input type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
+          </label>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Preview step
+  if (step === 'preview') {
+    const headerError = validations.length === 1 && validations[0].row === 0
+    return (
+      <div>
+        <div style={cardS}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>Preview: {fileName}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                {headerError ? '' : <>{rawRows.length} filas · <span style={{ color: 'var(--color-income)' }}>{validCount} válidas</span>{errorCount > 0 && <> · <span style={{ color: 'var(--color-expense)' }}>{errorCount} con errores</span></>}</>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { setStep('upload'); setRawRows([]); setValidations([]) }} style={btnS(true)}>← Volver</button>
+              {!headerError && validCount > 0 && (
+                <button onClick={doImport} style={btnS(true)}>
+                  Importar {validCount} registros{errorCount > 0 ? ` (omitir ${errorCount} con error)` : ''}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Header errors */}
+          {headerError && (
+            <div style={{ padding: 16, background: 'var(--color-expense-bg)', border: '1px solid var(--color-expense-border)', borderRadius: 'var(--radius-sm)' }}>
+              <div style={{ fontWeight: 600, color: 'var(--color-expense)', marginBottom: 8, fontSize: 14 }}>Headers incorrectos</div>
+              {validations[0].errors.map((e, i) => <div key={i} style={{ fontSize: 12, color: 'var(--color-expense-light)', marginBottom: 4 }}>{e}</div>)}
+            </div>
+          )}
+
+          {/* Error summary */}
+          {!headerError && errorCount > 0 && (
+            <div style={{ marginBottom: 16, padding: 14, background: 'var(--color-expense-bg)', border: '1px solid var(--color-expense-border)', borderRadius: 'var(--radius-sm)' }}>
+              <div style={{ fontWeight: 600, color: 'var(--color-expense)', marginBottom: 8, fontSize: 13 }}>Filas con errores ({errorCount})</div>
+              <div style={{ maxHeight: 200, overflow: 'auto' }}>
+                {validations.filter(v => v.errors.length > 0).map(v => (
+                  <div key={v.row} style={{ fontSize: 12, marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>Fila {v.row}:</span>{' '}
+                    {v.errors.map((e, i) => <span key={i} style={{ color: 'var(--color-expense-light)' }}>{e}{i < v.errors.length - 1 ? ' · ' : ''}</span>)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Data preview table */}
+          {!headerError && (
+            <div style={{ overflow: 'auto', maxHeight: 400, border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
+                <thead>
+                  <tr style={{ position: 'sticky', top: 0, background: 'var(--bg-tertiary)', zIndex: 1 }}>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600 }}>#</th>
+                    {EXPECTED_HEADERS.slice(0, 8).map(h => (
+                      <th key={h} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                    <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600 }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {validations.slice(0, 100).map(v => {
+                    const hasErr = v.errors.length > 0
+                    return (
+                      <tr key={v.row} style={{ background: hasErr ? 'var(--color-expense-bg)' : 'transparent' }}>
+                        <td style={{ padding: '4px 8px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-dim)' }}>{v.row}</td>
+                        {(v.data || []).slice(0, 8).map((cell, i) => (
+                          <td key={i} style={{ padding: '4px 8px', borderBottom: '1px solid var(--border-subtle)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cell}</td>
+                        ))}
+                        <td style={{ padding: '4px 8px', borderBottom: '1px solid var(--border-subtle)' }}>
+                          {hasErr ? <span style={{ color: 'var(--color-expense)' }} title={v.errors.join('\n')}>✕</span> : <span style={{ color: 'var(--color-income)' }}>✓</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {validations.length > 100 && <div style={{ padding: 8, textAlign: 'center', fontSize: 11, color: 'var(--text-dim)' }}>Mostrando 100 de {validations.length} filas...</div>}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Done step
+  if (step === 'done') {
+    return (
+      <div>
+        <div style={cardS}>
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <CheckCircle size={48} style={{ color: 'var(--color-income)', marginBottom: 12 }} />
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Importación completa</div>
+            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 4 }}>
+              <strong style={{ color: 'var(--color-income)' }}>{importResult?.inserted}</strong> registros importados correctamente
+            </div>
+            {importResult?.failed > 0 && (
+              <div style={{ fontSize: 13, color: 'var(--color-expense)' }}>{importResult.failed} fallaron al insertar</div>
+            )}
+            <button onClick={() => { setStep('upload'); setRawRows([]); setValidations([]); setImportResult(null) }} style={{ ...btnS(true), marginTop: 20 }}>Importar otro archivo</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
