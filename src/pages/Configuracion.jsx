@@ -548,8 +548,10 @@ function ImportTab({ user }) {
     setConcepts(conR.data || [])
     setPersons(perR.data || [])
     const rateMap = {}
-    ;(ratesR.data || []).forEach(r => { rateMap[r.date] = parseFloat(r.rate) })
-    setExchangeRates(rateMap)
+    const sortedRates = []
+    ;(ratesR.data || []).forEach(r => { rateMap[r.date] = parseFloat(r.rate); sortedRates.push({ date: r.date, rate: parseFloat(r.rate) }) })
+    sortedRates.sort((a, b) => a.date.localeCompare(b.date))
+    setExchangeRates({ map: rateMap, sorted: sortedRates })
   }
 
   const parseCSV = (text) => {
@@ -624,6 +626,9 @@ function ImportTab({ user }) {
       const warnings = []
       const [fecha, tipo, monto, moneda, cat, sub, con, desc, medioPago, cuotas, cuotaN, persona, destino, recurrente, montoUsd, cotizacion] = row
 
+      const isGasto = tipo === 'Gasto'
+      const isIngreso = tipo === 'Ingreso'
+
       // Required fields - always needed
       if (!fecha) errors.push('Fecha vacía')
       else if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) errors.push(`Fecha inválida: "${fecha}" (YYYY-MM-DD)`)
@@ -637,33 +642,44 @@ function ImportTab({ user }) {
       if (!moneda) errors.push('Moneda vacía')
       else if (!['ARS', 'USD'].includes(moneda)) errors.push(`Moneda inválida: "${moneda}" (ARS/USD)`)
 
-      // Required fields that were previously optional
+      // Always required
       if (!cat) errors.push('Categoría vacía')
       if (!sub) errors.push('Subcategoría vacía')
       if (!con) errors.push('Concepto vacío')
-      if (!medioPago) errors.push('Medio de Pago vacío')
-      else if (!['Contado', 'Crédito'].includes(medioPago)) errors.push(`Medio de pago inválido: "${medioPago}" (Contado/Crédito)`)
       if (!persona) errors.push('Persona vacía')
       if (!recurrente) errors.push('Recurrente vacío')
       else if (!['Sí', 'Si', 'No'].includes(recurrente)) errors.push(`Recurrente inválido: "${recurrente}" (Sí/No)`)
 
-      if (!cuotas) errors.push('Cuotas vacío')
-      else if (isNaN(parseInt(cuotas))) errors.push(`Cuotas no numérico: "${cuotas}"`)
-      if (!cuotaN) errors.push('Cuota N vacío')
-      else if (isNaN(parseInt(cuotaN))) errors.push(`Cuota N no numérico: "${cuotaN}"`)
+      // Medio de pago, cuotas, cuota N: required for Gasto, optional for Ingreso
+      if (isGasto) {
+        if (!medioPago) errors.push('Medio de Pago vacío')
+        else if (!['Contado', 'Crédito'].includes(medioPago)) errors.push(`Medio de pago inválido: "${medioPago}" (Contado/Crédito)`)
+        if (!cuotas) errors.push('Cuotas vacío')
+        else if (isNaN(parseInt(cuotas))) errors.push(`Cuotas no numérico: "${cuotas}"`)
+        if (!cuotaN) errors.push('Cuota N vacío')
+        else if (isNaN(parseInt(cuotaN))) errors.push(`Cuota N no numérico: "${cuotaN}"`)
+      } else if (isIngreso) {
+        if (medioPago && !['Contado', 'Crédito'].includes(medioPago)) errors.push(`Medio de pago inválido: "${medioPago}" (Contado/Crédito)`)
+        if (cuotas && isNaN(parseInt(cuotas))) errors.push(`Cuotas no numérico: "${cuotas}"`)
+        if (cuotaN && isNaN(parseInt(cuotaN))) errors.push(`Cuota N no numérico: "${cuotaN}"`)
+      }
 
+      // USD fields always required
       if (!montoUsd) errors.push('Monto USD vacío')
       else if (isNaN(parseFloat(montoUsd))) errors.push(`Monto USD no numérico: "${montoUsd}"`)
 
       if (!cotizacion) errors.push('Cotización vacía')
       else if (isNaN(parseFloat(cotizacion))) errors.push(`Cotización no numérico: "${cotizacion}"`)
-      else if (parseFloat(cotizacion) < 0) errors.push('Cotización no puede ser negativa')
+      else if (parseFloat(cotizacion) <= 0) errors.push('Cotización debe ser mayor a 0')
 
       // Description: warning if empty (not error)
       if (!desc) warnings.push('Descripción vacía — se usará el Concepto')
 
+      // Destino mandatory if category is Viajes
+      if (cat && cat.toLowerCase() === 'viajes' && !destino) errors.push('Destino obligatorio para categoría Viajes')
+
       // Category hierarchy validation
-      if (tipo === 'Gasto' && cat) {
+      if (isGasto && cat) {
         const catMatch = categories.find(c => c.name.toLowerCase() === cat.toLowerCase() && c.type === 'expense')
         if (!catMatch) errors.push(`Categoría no encontrada: "${cat}"`)
         else {
@@ -678,7 +694,7 @@ function ImportTab({ user }) {
         }
       }
 
-      if (tipo === 'Ingreso' && cat) {
+      if (isIngreso && cat) {
         const catMatch = categories.find(c => c.name.toLowerCase() === cat.toLowerCase() && c.type === 'income')
         if (!catMatch) errors.push(`Categoría de ingreso no encontrada: "${cat}"`)
       }
@@ -689,19 +705,34 @@ function ImportTab({ user }) {
         if (!personMatch) errors.push(`Persona no encontrada: "${persona}"`)
       }
 
-      // Cross-validation: ARS amount vs USD amount * exchange rate (tolerance 1 ARS)
-      if (moneda === 'ARS' && montoUsd && cotizacion && !isNaN(parseFloat(monto)) && !isNaN(parseFloat(montoUsd)) && !isNaN(parseFloat(cotizacion))) {
-        const expected = parseFloat(montoUsd) * parseFloat(cotizacion)
-        const diff = Math.abs(parseFloat(monto) - expected)
-        if (diff > 1) errors.push(`Monto ARS (${monto}) no coincide con USD (${montoUsd}) × Cotización (${cotizacion}) = ${expected.toFixed(2)} — diferencia: ${diff.toFixed(2)}`)
+      // Cross-validation currency
+      const montoNum = parseFloat(monto)
+      const usdNum = parseFloat(montoUsd)
+      const fxNum = parseFloat(cotizacion)
+      const hasNums = !isNaN(montoNum) && !isNaN(usdNum) && !isNaN(fxNum) && fxNum > 0
+
+      if (hasNums && moneda === 'ARS') {
+        // ARS / tipo de cambio ≈ monto USD (tolerancia 1 USD)
+        const expectedUsd = montoNum / fxNum
+        const diff = Math.abs(expectedUsd - usdNum)
+        if (diff > 1) errors.push(`ARS ${monto} / ${cotizacion} = ${expectedUsd.toFixed(2)} USD, pero Monto USD es ${montoUsd} — dif: ${diff.toFixed(2)} USD`)
       }
 
-      // Warning: exchange rate differs from DB rate for that date
-      if (fecha && cotizacion && !isNaN(parseFloat(cotizacion)) && exchangeRates[fecha]) {
-        const dbRate = exchangeRates[fecha]
-        const csvRate = parseFloat(cotizacion)
-        if (Math.abs(dbRate - csvRate) > 0.01) {
-          warnings.push(`Cotización (${csvRate}) difiere de la DB (${dbRate}) para ${fecha}`)
+      if (hasNums && moneda === 'USD') {
+        // Monto debe ser igual a monto USD
+        if (Math.abs(montoNum - usdNum) > 0.01) errors.push(`Moneda USD pero Monto (${monto}) ≠ Monto USD (${montoUsd})`)
+      }
+
+      // Warning: exchange rate differs from DB rate for that date (closest available)
+      if (fecha && !isNaN(fxNum)) {
+        // Find closest rate: exact date, or most recent before that date
+        let dbRate = exchangeRates[fecha]
+        if (!dbRate) {
+          const sorted = Object.keys(exchangeRates).filter(d => d <= fecha).sort().reverse()
+          if (sorted.length > 0) dbRate = exchangeRates[sorted[0]]
+        }
+        if (dbRate && Math.abs(dbRate - fxNum) > 0.01) {
+          warnings.push(`Cotización CSV (${fxNum}) difiere de DB (${dbRate}) para fecha ${fecha}`)
         }
       }
 
