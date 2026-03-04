@@ -95,14 +95,33 @@ export default function Historial() {
   // Reset page and filters on tab change
   useEffect(() => { setPage(0); setColFilters({ date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '' }) }, [tab])
 
-  // Unique values for dropdowns
+  // Unique values for dropdowns — based on data filtered by OTHER filters (not own column)
   const uniqueVals = useMemo(() => {
     const data = transactions.filter(t => t.type === tab)
-    const cats = [...new Set(data.map(t => catMap[t.category_id]?.name || t.income_concept || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
-    const subs = [...new Set(data.map(t => subMap[t.subcategory_id]?.name || t.income_subtype || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
-    const pers = [...new Set(data.map(t => t.person).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const cf = colFilters
+
+    const applyOtherFilters = (exclude) => {
+      let d = data
+      if (exclude !== 'category' && cf.category) d = d.filter(t => (catMap[t.category_id]?.name || t.income_concept || '') === cf.category)
+      if (exclude !== 'subcategory' && cf.subcategory) d = d.filter(t => (subMap[t.subcategory_id]?.name || t.income_subtype || '') === cf.subcategory)
+      if (exclude !== 'person' && cf.person) d = d.filter(t => (t.person || '') === cf.person)
+      if (cf.date) d = d.filter(t => (t.date || '').includes(cf.date))
+      if (cf.amount) d = d.filter(t => String(t.amount || '').includes(cf.amount))
+      if (cf.concept) d = d.filter(t => (conMap[t.concept_id]?.name || '').toLowerCase().includes(cf.concept.toLowerCase()))
+      if (cf.description) d = d.filter(t => (t.description || '').toLowerCase().includes(cf.description.toLowerCase()))
+      if (cf.fxRate) d = d.filter(t => String(t.exchange_rate || '').includes(cf.fxRate))
+      return d
+    }
+
+    const catsData = applyOtherFilters('category')
+    const subsData = applyOtherFilters('subcategory')
+    const persData = applyOtherFilters('person')
+
+    const cats = [...new Set(catsData.map(t => catMap[t.category_id]?.name || t.income_concept || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const subs = [...new Set(subsData.map(t => subMap[t.subcategory_id]?.name || t.income_subtype || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const pers = [...new Set(persData.map(t => t.person).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     return { cats, subs, pers }
-  }, [transactions, tab, catMap, subMap])
+  }, [transactions, tab, colFilters, catMap, subMap, conMap])
 
   // Edit handlers
   const startEdit = (tx) => {
@@ -262,12 +281,6 @@ export default function Historial() {
 
       {/* Table */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {pageData.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 40, opacity: 0.3 }}>{tab === 'expense' ? '📊' : '💰'}</div>
-            <div style={{ fontSize: 15 }}>No hay {tab === 'expense' ? 'gastos' : 'ingresos'} registrados</div>
-          </div>
-        ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg-secondary)', borderBottom: '2px solid var(--border-strong)' }}>
@@ -413,9 +426,18 @@ export default function Historial() {
                   </tr>
                 )
               })}
+              {pageData.length === 0 && (
+                <tr>
+                  <td colSpan={9} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: 32, opacity: 0.3, marginBottom: 8 }}>{tab === 'expense' ? '📊' : '💰'}</div>
+                    <div style={{ fontSize: 14 }}>
+                      {Object.values(colFilters).some(v => v) ? 'No hay resultados con los filtros aplicados' : `No hay ${tab === 'expense' ? 'gastos' : 'ingresos'} registrados`}
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-        )}
       </div>
 
       {/* Pagination */}

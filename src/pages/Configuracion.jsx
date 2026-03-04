@@ -524,6 +524,7 @@ function ImportTab({ user }) {
   const [subcategories, setSubcategories] = useState([])
   const [concepts, setConcepts] = useState([])
   const [persons, setPersons] = useState([])
+  const [exchangeRates, setExchangeRates] = useState({})
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [fileName, setFileName] = useState('')
@@ -535,16 +536,20 @@ function ImportTab({ user }) {
   }, [])
 
   const loadLookups = async () => {
-    const [catR, subR, conR, perR] = await Promise.all([
+    const [catR, subR, conR, perR, ratesR] = await Promise.all([
       supabase.from('categories').select('id, name, type'),
       supabase.from('subcategories').select('id, name, category_id'),
       supabase.from('concepts').select('id, name, subcategory_id'),
       supabase.from('persons').select('id, name'),
+      supabase.from('exchange_rates').select('date, rate'),
     ])
     setCategories(catR.data || [])
     setSubcategories(subR.data || [])
     setConcepts(conR.data || [])
     setPersons(perR.data || [])
+    const rateMap = {}
+    ;(ratesR.data || []).forEach(r => { rateMap[r.date] = parseFloat(r.rate) })
+    setExchangeRates(rateMap)
   }
 
   const parseCSV = (text) => {
@@ -616,11 +621,12 @@ function ImportTab({ user }) {
     const vals = []
     rows.forEach((row, idx) => {
       const errors = []
+      const warnings = []
       const [fecha, tipo, monto, moneda, cat, sub, con, desc, medioPago, cuotas, cuotaN, persona, destino, recurrente, montoUsd, cotizacion] = row
 
-      // Required fields
+      // Required fields - always needed
       if (!fecha) errors.push('Fecha vacía')
-      else if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) errors.push(`Fecha inválida: "${fecha}" (esperado YYYY-MM-DD)`)
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) errors.push(`Fecha inválida: "${fecha}" (YYYY-MM-DD)`)
 
       if (!tipo) errors.push('Tipo vacío')
       else if (!['Gasto', 'Ingreso'].includes(tipo)) errors.push(`Tipo inválido: "${tipo}" (Gasto/Ingreso)`)
@@ -631,19 +637,42 @@ function ImportTab({ user }) {
       if (!moneda) errors.push('Moneda vacía')
       else if (!['ARS', 'USD'].includes(moneda)) errors.push(`Moneda inválida: "${moneda}" (ARS/USD)`)
 
-      // Category validation for expenses
-      if (tipo === 'Gasto') {
-        if (cat) {
-          const catMatch = categories.find(c => c.name.toLowerCase() === cat.toLowerCase() && c.type === 'expense')
-          if (!catMatch) errors.push(`Categoría no encontrada: "${cat}"`)
-          else {
-            if (sub) {
-              const subMatch = subcategories.find(s => s.name.toLowerCase() === sub.toLowerCase() && s.category_id === catMatch.id)
-              if (!subMatch) errors.push(`Subcategoría "${sub}" no existe en "${cat}"`)
-              else if (con) {
-                const conMatch = concepts.find(c => c.name.toLowerCase() === con.toLowerCase() && c.subcategory_id === subMatch.id)
-                if (!conMatch) errors.push(`Concepto "${con}" no existe en "${sub}"`)
-              }
+      // Required fields that were previously optional
+      if (!cat) errors.push('Categoría vacía')
+      if (!sub) errors.push('Subcategoría vacía')
+      if (!con) errors.push('Concepto vacío')
+      if (!medioPago) errors.push('Medio de Pago vacío')
+      else if (!['Contado', 'Crédito'].includes(medioPago)) errors.push(`Medio de pago inválido: "${medioPago}" (Contado/Crédito)`)
+      if (!persona) errors.push('Persona vacía')
+      if (!recurrente) errors.push('Recurrente vacío')
+      else if (!['Sí', 'Si', 'No'].includes(recurrente)) errors.push(`Recurrente inválido: "${recurrente}" (Sí/No)`)
+
+      if (!cuotas) errors.push('Cuotas vacío')
+      else if (isNaN(parseInt(cuotas))) errors.push(`Cuotas no numérico: "${cuotas}"`)
+      if (!cuotaN) errors.push('Cuota N vacío')
+      else if (isNaN(parseInt(cuotaN))) errors.push(`Cuota N no numérico: "${cuotaN}"`)
+
+      if (!montoUsd) errors.push('Monto USD vacío')
+      else if (isNaN(parseFloat(montoUsd))) errors.push(`Monto USD no numérico: "${montoUsd}"`)
+
+      if (!cotizacion) errors.push('Cotización vacía')
+      else if (isNaN(parseFloat(cotizacion))) errors.push(`Cotización no numérico: "${cotizacion}"`)
+      else if (parseFloat(cotizacion) < 0) errors.push('Cotización no puede ser negativa')
+
+      // Description: warning if empty (not error)
+      if (!desc) warnings.push('Descripción vacía — se usará el Concepto')
+
+      // Category hierarchy validation
+      if (tipo === 'Gasto' && cat) {
+        const catMatch = categories.find(c => c.name.toLowerCase() === cat.toLowerCase() && c.type === 'expense')
+        if (!catMatch) errors.push(`Categoría no encontrada: "${cat}"`)
+        else {
+          if (sub) {
+            const subMatch = subcategories.find(s => s.name.toLowerCase() === sub.toLowerCase() && s.category_id === catMatch.id)
+            if (!subMatch) errors.push(`Subcategoría "${sub}" no existe en "${cat}"`)
+            else if (con) {
+              const conMatch = concepts.find(c => c.name.toLowerCase() === con.toLowerCase() && c.subcategory_id === subMatch.id)
+              if (!conMatch) errors.push(`Concepto "${con}" no existe en "${sub}"`)
             }
           }
         }
@@ -660,24 +689,29 @@ function ImportTab({ user }) {
         if (!personMatch) errors.push(`Persona no encontrada: "${persona}"`)
       }
 
-      // Payment method
-      if (medioPago && !['Contado', 'Crédito'].includes(medioPago)) errors.push(`Medio de pago inválido: "${medioPago}" (Contado/Crédito)`)
+      // Cross-validation: ARS amount vs USD amount * exchange rate (tolerance 1 ARS)
+      if (moneda === 'ARS' && montoUsd && cotizacion && !isNaN(parseFloat(monto)) && !isNaN(parseFloat(montoUsd)) && !isNaN(parseFloat(cotizacion))) {
+        const expected = parseFloat(montoUsd) * parseFloat(cotizacion)
+        const diff = Math.abs(parseFloat(monto) - expected)
+        if (diff > 1) errors.push(`Monto ARS (${monto}) no coincide con USD (${montoUsd}) × Cotización (${cotizacion}) = ${expected.toFixed(2)} — diferencia: ${diff.toFixed(2)}`)
+      }
 
-      // Numeric fields
-      if (cuotas && isNaN(parseInt(cuotas))) errors.push(`Cuotas no numérico: "${cuotas}"`)
-      if (cuotaN && isNaN(parseInt(cuotaN))) errors.push(`Cuota N° no numérico: "${cuotaN}"`)
-      if (montoUsd && isNaN(parseFloat(montoUsd))) errors.push(`Monto USD no numérico: "${montoUsd}"`)
-      if (cotizacion && isNaN(parseFloat(cotizacion))) errors.push(`Cotización no numérico: "${cotizacion}"`)
+      // Warning: exchange rate differs from DB rate for that date
+      if (fecha && cotizacion && !isNaN(parseFloat(cotizacion)) && exchangeRates[fecha]) {
+        const dbRate = exchangeRates[fecha]
+        const csvRate = parseFloat(cotizacion)
+        if (Math.abs(dbRate - csvRate) > 0.01) {
+          warnings.push(`Cotización (${csvRate}) difiere de la DB (${dbRate}) para ${fecha}`)
+        }
+      }
 
-      // Recurrente
-      if (recurrente && !['Sí', 'Si', 'No', ''].includes(recurrente)) errors.push(`Recurrente inválido: "${recurrente}" (Sí/No)`)
-
-      vals.push({ row: idx + 2, errors, data: row })
+      vals.push({ row: idx + 2, errors, warnings, data: row })
     })
     setValidations(vals)
   }
 
   const errorCount = validations.filter(v => v.errors.length > 0).length
+  const warningCount = validations.filter(v => v.warnings?.length > 0 && v.errors.length === 0).length
   const validCount = validations.filter(v => v.errors.length === 0).length
 
   const doImport = async () => {
@@ -716,7 +750,7 @@ function ImportTab({ user }) {
           concept_id: conId || null,
           income_concept: !isExpense ? (cat || null) : null,
           income_subtype: !isExpense ? (sub || null) : null,
-          description: desc || null,
+          description: desc || con || null,
           payment_method: isExpense ? (medioPago || null) : null,
           installments: parseInt(cuotas) || 1,
           installment_number: parseInt(cuotaN) || 1,
@@ -777,7 +811,7 @@ function ImportTab({ user }) {
             <div>
               <div style={{ fontSize: 15, fontWeight: 600 }}>Preview: {fileName}</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                {headerError ? '' : <>{rawRows.length} filas · <span style={{ color: 'var(--color-income)' }}>{validCount} válidas</span>{errorCount > 0 && <> · <span style={{ color: 'var(--color-expense)' }}>{errorCount} con errores</span></>}</>}
+                {headerError ? '' : <>{rawRows.length} filas · <span style={{ color: 'var(--color-income)' }}>{validCount} válidas</span>{warningCount > 0 && <> · <span style={{ color: '#e6a817' }}>{warningCount} con advertencias</span></>}{errorCount > 0 && <> · <span style={{ color: 'var(--color-expense)' }}>{errorCount} con errores</span></>}</>}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -801,12 +835,27 @@ function ImportTab({ user }) {
           {/* Error summary */}
           {!headerError && errorCount > 0 && (
             <div style={{ marginBottom: 16, padding: 14, background: 'var(--color-expense-bg)', border: '1px solid var(--color-expense-border)', borderRadius: 'var(--radius-sm)' }}>
-              <div style={{ fontWeight: 600, color: 'var(--color-expense)', marginBottom: 8, fontSize: 13 }}>Filas con errores ({errorCount})</div>
+              <div style={{ fontWeight: 600, color: 'var(--color-expense)', marginBottom: 8, fontSize: 13 }}>Errores ({errorCount}) — estas filas no se importarán</div>
               <div style={{ maxHeight: 200, overflow: 'auto' }}>
                 {validations.filter(v => v.errors.length > 0).map(v => (
                   <div key={v.row} style={{ fontSize: 12, marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border-subtle)' }}>
                     <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>Fila {v.row}:</span>{' '}
                     {v.errors.map((e, i) => <span key={i} style={{ color: 'var(--color-expense-light)' }}>{e}{i < v.errors.length - 1 ? ' · ' : ''}</span>)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Warnings summary */}
+          {!headerError && warningCount > 0 && (
+            <div style={{ marginBottom: 16, padding: 14, background: 'rgba(230,168,23,0.08)', border: '1px solid rgba(230,168,23,0.25)', borderRadius: 'var(--radius-sm)' }}>
+              <div style={{ fontWeight: 600, color: '#e6a817', marginBottom: 8, fontSize: 13 }}>Advertencias ({warningCount}) — se importarán igualmente</div>
+              <div style={{ maxHeight: 150, overflow: 'auto' }}>
+                {validations.filter(v => v.warnings?.length > 0 && v.errors.length === 0).map(v => (
+                  <div key={v.row} style={{ fontSize: 12, marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>Fila {v.row}:</span>{' '}
+                    {v.warnings.map((w, i) => <span key={i} style={{ color: '#b8860b' }}>{w}{i < v.warnings.length - 1 ? ' · ' : ''}</span>)}
                   </div>
                 ))}
               </div>
@@ -836,7 +885,7 @@ function ImportTab({ user }) {
                           <td key={i} style={{ padding: '4px 8px', borderBottom: '1px solid var(--border-subtle)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cell}</td>
                         ))}
                         <td style={{ padding: '4px 8px', borderBottom: '1px solid var(--border-subtle)' }}>
-                          {hasErr ? <span style={{ color: 'var(--color-expense)' }} title={v.errors.join('\n')}>✕</span> : <span style={{ color: 'var(--color-income)' }}>✓</span>}
+                          {hasErr ? <span style={{ color: 'var(--color-expense)' }} title={v.errors.join('\n')}>✕</span> : v.warnings?.length > 0 ? <span style={{ color: '#e6a817' }} title={v.warnings.join('\n')}>⚠</span> : <span style={{ color: 'var(--color-income)' }}>✓</span>}
                         </td>
                       </tr>
                     )
