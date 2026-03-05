@@ -781,7 +781,7 @@ function ImportTab({ user }) {
           subcategory_id: subId || null,
           concept_id: conId || null,
           income_concept: !isExpense ? (cat || null) : null,
-          income_subtype: !isExpense ? (sub || null) : null,
+          income_subtype: !isExpense ? (['Sí', 'Si'].includes(recurrente) ? 'recurrente' : 'extraordinario') : null,
           description: desc || con || null,
           payment_method: isExpense ? (medioPago || null) : null,
           installments: parseInt(cuotas) || 1,
