@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import {
   XAxis, YAxis, CartesianGrid,
@@ -71,8 +72,8 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      const { data } = await supabase.from('transactions').select('*, categories(name)').order('date', { ascending: true }).limit(10000)
-      setTransactions(data || [])
+      const data = await fetchAllTransactions(null, { select: '*, categories(name)', orderCol: 'date', orderAsc: true })
+      setTransactions(data)
       setLoading(false)
     }
     fetchData()

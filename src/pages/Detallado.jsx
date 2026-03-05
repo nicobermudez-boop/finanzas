@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import { Filter, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
@@ -77,13 +78,13 @@ export default function Detallado() {
       const now = new Date()
       const fromDate = new Date(now.getFullYear(), now.getMonth() - monthRange + 1, 1)
       const dateStr = fromDate.toISOString().split('T')[0]
-      const [txRes, catRes, subcatRes, conceptRes] = await Promise.all([
-        supabase.from('transactions').select('*').eq('type', 'expense').gte('date', dateStr).order('date', { ascending: true }).limit(10000),
+      const [txData, catRes, subcatRes, conceptRes] = await Promise.all([
+        fetchAllTransactions(null, { select: '*', eq: [['type', 'expense']], gte: [['date', dateStr]], orderCol: 'date', orderAsc: true }),
         supabase.from('categories').select('*').eq('type', 'expense'),
         supabase.from('subcategories').select('*'),
         supabase.from('concepts').select('*'),
       ])
-      setTransactions(txRes.data || [])
+      setTransactions(txData)
       setCategories(catRes.data || [])
       setSubcategories(subcatRes.data || [])
       setConcepts(conceptRes.data || [])

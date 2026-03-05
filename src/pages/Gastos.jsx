@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -114,13 +115,13 @@ export default function Gastos() {
   useEffect(() => {
     ;(async () => {
       setLoading(true)
-      const [txR, catR, subR, conR] = await Promise.all([
-        supabase.from('transactions').select('*, categories(name)').order('date', { ascending: true }).limit(10000),
+      const [txData, catR, subR, conR] = await Promise.all([
+        fetchAllTransactions(null, { select: '*, categories(name)', orderCol: 'date', orderAsc: true }),
         supabase.from('categories').select('*').eq('type', 'expense'),
         supabase.from('subcategories').select('*'),
         supabase.from('concepts').select('*'),
       ])
-      setTransactions(txR.data || [])
+      setTransactions(txData)
       setCategories((catR.data || []).sort((a, b) => a.name.localeCompare(b.name, 'es')))
       setSubcategories(subR.data || [])
       setConcepts(conR.data || [])

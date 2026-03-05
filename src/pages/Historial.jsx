@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { Loader2, Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
+import { fetchAllTransactions } from '../lib/fetchAll'
+
 const PAGE_SIZE = 25
 
 function fmt(value, currency) {
@@ -42,13 +44,13 @@ export default function Historial() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      const [txRes, catRes, subRes, conRes] = await Promise.all([
-        supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10000),
+      const [txData, catRes, subRes, conRes] = await Promise.all([
+        fetchAllTransactions(user.id, { orderCol: 'created_at', orderAsc: false }),
         supabase.from('categories').select('*'),
         supabase.from('subcategories').select('*'),
         supabase.from('concepts').select('*'),
       ])
-      setTransactions(txRes.data || [])
+      setTransactions(txData)
       setCategories(catRes.data || [])
       setSubcategories(subRes.data || [])
       setConcepts(conRes.data || [])
