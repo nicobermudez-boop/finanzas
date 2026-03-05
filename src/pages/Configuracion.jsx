@@ -796,7 +796,15 @@ function ImportTab({ user }) {
       })
 
       const { error } = await supabase.from('transactions').insert(records)
-      if (error) { console.error(error); failed += chunk.length }
+      if (error) {
+        console.error('Batch error:', error)
+        // Try one by one to identify which records fail
+        for (const rec of records) {
+          const { error: singleErr } = await supabase.from('transactions').insert(rec)
+          if (singleErr) { console.error('Row error:', singleErr, rec); failed++ }
+          else inserted++
+        }
+      }
       else inserted += chunk.length
     }
 
