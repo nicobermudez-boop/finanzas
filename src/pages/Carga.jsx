@@ -255,37 +255,33 @@ export default function Carga() {
     <div className="app">
       {/* HEADER */}
       <div className="hdr">
-        <div className="ht">
-          <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Carga</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {mepRate && <div className="mep">MEP <b>{mepRate.toLocaleString('es-AR')}</b></div>}
-          </div>
-        </div>
-        <div className="ttgl">
+        <div className="ttgl" style={{ marginBottom: 10 }}>
           <button className={`tb ${type === 'expense' ? 'ae' : ''}`}
             onClick={() => { setType('expense'); reset() }}>▼ Gasto</button>
           <button className={`tb ${type === 'income' ? 'ai' : ''}`}
             onClick={() => { setType('income'); reset() }}>▲ Ingreso</button>
         </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+          <div className="aw" style={{ flex: '1 1 0', maxWidth: 200 }}>
+            <span className="ap" style={{ fontSize: 15 }}>{cur === 'ARS' ? '$' : 'U$'}</span>
+            <input ref={aRef} className="ai" style={{ fontSize: 18, padding: '10px 10px 10px 32px' }} type="text" inputMode="decimal" placeholder="0"
+              value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} autoFocus
+              enterKeyHint="done" onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }} />
+          </div>
+          <div className="ct">
+            <button className={`cb ${cur === 'ARS' ? 'on' : ''}`} onClick={() => setCur('ARS')}>ARS</button>
+            <button className={`cb ${cur === 'USD' ? 'on' : ''}`} onClick={() => setCur('USD')}>USD</button>
+          </div>
+          {mepRate && (
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '0 8px', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--f-txd)', lineHeight: 1.4 }}>
+              <span style={{ fontSize: 9, letterSpacing: '0.05em', opacity: 0.7 }}>MEP</span>
+              <span style={{ fontWeight: 700, color: 'var(--f-gr)', fontSize: 12 }}>${Math.round(mepRate).toLocaleString('es-AR')}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="fb">
-        {/* AMOUNT */}
-        <div className="sec">
-          <div className="sl">Importe</div>
-          <div className="arow">
-            <div className="aw">
-              <span className="ap">{cur === 'ARS' ? '$' : 'U$'}</span>
-              <input ref={aRef} className="ai" type="text" inputMode="decimal" placeholder="0"
-                value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} autoFocus />
-            </div>
-            <div className="ct">
-              <button className={`cb ${cur === 'ARS' ? 'on' : ''}`} onClick={() => setCur('ARS')}>ARS</button>
-              <button className={`cb ${cur === 'USD' ? 'on' : ''}`} onClick={() => setCur('USD')}>USD</button>
-            </div>
-          </div>
-        </div>
-
         {/* DATE + PERSON */}
         <div className="sec">
           <div className="row">
@@ -380,7 +376,8 @@ export default function Carga() {
         <div className="sec"><div className="sl">Descripción (opcional)</div>
           <input className="inp" type="text"
             placeholder={isV ? 'Ej: Hotel Marriott, Nafta ruta...' : 'Ej: Café Martinez, Cuota gym...'}
-            value={desc} onChange={e => setDesc(e.target.value)} />
+            value={desc} onChange={e => setDesc(e.target.value)}
+            enterKeyHint="done" onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }} />
           {topDescs.length > 0 && !desc && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
               {topDescs.map(d => (
