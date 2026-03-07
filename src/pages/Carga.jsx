@@ -110,7 +110,6 @@ export default function Carga() {
 
       const personsList = persData || []
       setMembers(personsList)
-      if (personsList.length > 0) setPerson(personsList[0].id)
 
       // Load MEP rate
       const rate = await getLatestRate()
@@ -255,30 +254,30 @@ export default function Carga() {
     <div className="app">
       {/* HEADER */}
       <div className="hdr">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
           {mepRate && <div className="mep">MEP <b>${Math.round(mepRate).toLocaleString('es-AR')}</b></div>}
-          {!mepRate && <div />}
         </div>
-        <div className="ttgl" style={{ marginBottom: 10 }}>
+        <div className="ttgl" style={{ marginBottom: 12 }}>
           <button className={`tb ${type === 'expense' ? 'ae' : ''}`}
             onClick={() => { setType('expense'); reset() }}>▼ Gasto</button>
           <button className={`tb ${type === 'income' ? 'ai' : ''}`}
             onClick={() => { setType('income'); reset() }}>▲ Ingreso</button>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-          <div style={{ flex: '0 0 auto' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
             <div className="sl">Fecha</div>
-            <input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} style={{ fontSize: 12, padding: '8px 6px' }} />
+            <input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ width: '100%', fontSize: 13, padding: '9px 8px', boxSizing: 'border-box', height: 38 }} />
           </div>
-          <div className="ct" style={{ flexShrink: 0 }}>
+          <div className="ct" style={{ flexShrink: 0, height: 38 }}>
             <button className={`cb ${cur === 'ARS' ? 'on' : ''}`} onClick={() => setCur('ARS')}>ARS</button>
             <button className={`cb ${cur === 'USD' ? 'on' : ''}`} onClick={() => setCur('USD')}>USD</button>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1 }}>
             <div className="sl">Importe</div>
-            <div className="aw" style={{ height: 36 }}>
+            <div className="aw" style={{ height: 38 }}>
               <span className="ap" style={{ fontSize: 14, left: 10 }}>{cur === 'ARS' ? '$' : 'U$'}</span>
-              <input ref={aRef} className="ai" style={{ fontSize: 16, padding: '8px 8px 8px 28px' }} type="text" inputMode="decimal" placeholder="0"
+              <input ref={aRef} className="ai" style={{ fontSize: 16, padding: '9px 8px 9px 28px' }} type="text" inputMode="decimal" placeholder="0"
                 value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} autoFocus
                 enterKeyHint="done" onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }} />
             </div>
@@ -286,7 +285,7 @@ export default function Carga() {
         </div>
       </div>
 
-      <div className="fb">
+      <div className="fb" style={{ paddingTop: 16 }}>
 
         {/* EXPENSE */}
         {type === 'expense' && <>
