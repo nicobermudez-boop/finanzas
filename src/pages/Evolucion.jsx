@@ -84,9 +84,9 @@ export default function Evolucion() {
   const compYear = baseYear - 1
 
   const availableYears = useMemo(() => {
-    const years = new Set(transactions.map(t => new Date(t.date + 'T00:00:00').getFullYear()))
+    const years = new Set(transactions.map(t => new Date(t.date + 'T00:00:00').getFullYear()).filter(y => !isNaN(y)))
     years.add(nowYear)
-    return [...years].sort((a, b) => b - a)
+    return [...years].filter(y => y <= nowYear).sort((a, b) => b - a)
   }, [transactions, nowYear])
 
   useEffect(() => {

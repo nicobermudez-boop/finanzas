@@ -327,7 +327,7 @@ export default function Gastos() {
   const availableYears = useMemo(() => {
     const years = new Set(transactions.map(t => new Date(t.date + 'T00:00:00').getFullYear()).filter(y => !isNaN(y)))
     years.add(defYear)
-    return [...years].sort()
+    return [...years].filter(y => y <= now0.getFullYear()).sort()
   }, [transactions, defYear])
 
   const maxMonth = baseYear === now0.getFullYear() ? now0.getMonth() - 1 : 11
@@ -388,7 +388,7 @@ export default function Gastos() {
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Base:</span>
+
             <select value={baseYear} onChange={e => handleYearChange(Number(e.target.value))} style={selectStyle}>
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
