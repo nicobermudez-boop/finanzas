@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { getExchangeRate } from '../lib/exchangeRate'
 import { useAuth } from '../context/AuthContext'
 import { Loader2, Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { fetchAllTransactions } from '../lib/fetchAll'
+
+const INCOME_CONCEPTS = ['Sueldo', 'Bono', 'Rentas', 'Otros']
 
 const PAGE_SIZE = 25
 
@@ -28,6 +31,7 @@ export default function Historial() {
   const [categories, setCategories] = useState([])
   const [subcategories, setSubcategories] = useState([])
   const [concepts, setConcepts] = useState([])
+  const [persons, setPersons] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('expense')
   const [page, setPage] = useState(0)
@@ -44,16 +48,18 @@ export default function Historial() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      const [txData, catRes, subRes, conRes] = await Promise.all([
+      const [txData, catRes, subRes, conRes, persRes] = await Promise.all([
         fetchAllTransactions(user.id, { orderCol: 'created_at', orderAsc: false }),
         supabase.from('categories').select('*'),
         supabase.from('subcategories').select('*'),
         supabase.from('concepts').select('*'),
+        supabase.from('persons').select('*').eq('archived', false).order('name'),
       ])
       setTransactions(txData)
       setCategories(catRes.data || [])
       setSubcategories(subRes.data || [])
       setConcepts(conRes.data || [])
+      setPersons(persRes.data || [])
       setLoading(false)
     }
     fetchData()
@@ -133,6 +139,12 @@ export default function Historial() {
       amount: tx.amount,
       currency: tx.currency,
       description: tx.description || '',
+      category_id: tx.category_id || null,
+      subcategory_id: tx.subcategory_id || null,
+      concept_id: tx.concept_id || null,
+      person_id: tx.person_id || null,
+      income_concept: tx.income_concept || null,
+      income_subtype: tx.income_subtype || null,
     })
   }
 
@@ -143,19 +155,47 @@ export default function Historial() {
 
   const saveEdit = async (id) => {
     setSaving(true)
+    const amount = parseFloat(editData.amount)
+    const personName = persons.find(p => p.id === editData.person_id)?.name || null
+
+    // Fetch exchange rate for the date and recalculate amount_usd
+    let exchange_rate = null
+    let amount_usd = null
+    try {
+      exchange_rate = await getExchangeRate(editData.date)
+      if (exchange_rate) {
+        amount_usd = editData.currency === 'ARS'
+          ? Math.round((amount / exchange_rate) * 100) / 100
+          : amount
+      }
+    } catch (e) {
+      console.warn('Failed to fetch exchange rate:', e)
+    }
+
+    const updateData = {
+      date: editData.date,
+      amount,
+      currency: editData.currency,
+      description: editData.description || null,
+      category_id: editData.category_id || null,
+      subcategory_id: editData.subcategory_id || null,
+      concept_id: editData.concept_id || null,
+      person_id: editData.person_id || null,
+      person: personName,
+      income_concept: editData.income_concept || null,
+      income_subtype: editData.income_subtype || null,
+      exchange_rate,
+      amount_usd,
+    }
+
     const { error } = await supabase
       .from('transactions')
-      .update({
-        date: editData.date,
-        amount: parseFloat(editData.amount),
-        currency: editData.currency,
-        description: editData.description || null,
-      })
+      .update(updateData)
       .eq('id', id)
 
     if (!error) {
       setTransactions(prev => prev.map(t =>
-        t.id === id ? { ...t, ...editData, amount: parseFloat(editData.amount) } : t
+        t.id === id ? { ...t, ...updateData } : t
       ))
       setEditingId(null)
     }
@@ -375,9 +415,57 @@ export default function Historial() {
                         </span>
                       )}
                     </td>
-                    <td style={s.cellMuted}>{catName}</td>
-                    <td style={s.cellMuted}>{subName}</td>
-                    <td style={s.cellMuted}>{conName}</td>
+                    <td style={s.cellMuted}>
+                      {isEditing ? (
+                        tx.type === 'expense' ? (
+                          <select value={editData.category_id || ''} onChange={e => {
+                            const val = e.target.value || null
+                            setEditData(p => ({ ...p, category_id: val, subcategory_id: null, concept_id: null }))
+                          }} style={s.editInput}>
+                            <option value="">–</option>
+                            {categories.filter(c => c.type === 'expense' && !c.archived).map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <select value={editData.income_concept || ''} onChange={e => setEditData(p => ({ ...p, income_concept: e.target.value || null }))} style={s.editInput}>
+                            <option value="">–</option>
+                            {INCOME_CONCEPTS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
+                          </select>
+                        )
+                      ) : catName}
+                    </td>
+                    <td style={s.cellMuted}>
+                      {isEditing ? (
+                        tx.type === 'expense' ? (
+                          <select value={editData.subcategory_id || ''} onChange={e => {
+                            const val = e.target.value || null
+                            setEditData(p => ({ ...p, subcategory_id: val, concept_id: null }))
+                          }} style={s.editInput}>
+                            <option value="">–</option>
+                            {subcategories.filter(sc => sc.category_id === editData.category_id && !sc.archived).map(sc => (
+                              <option key={sc.id} value={sc.id}>{sc.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <select value={editData.income_subtype || ''} onChange={e => setEditData(p => ({ ...p, income_subtype: e.target.value || null }))} style={s.editInput}>
+                            <option value="">–</option>
+                            <option value="recurrente">Recurrente</option>
+                            <option value="extraordinario">Extraordinario</option>
+                          </select>
+                        )
+                      ) : subName}
+                    </td>
+                    <td style={s.cellMuted}>
+                      {isEditing && tx.type === 'expense' ? (
+                        <select value={editData.concept_id || ''} onChange={e => setEditData(p => ({ ...p, concept_id: e.target.value || null }))} style={s.editInput}>
+                          <option value="">–</option>
+                          {concepts.filter(c => c.subcategory_id === editData.subcategory_id && !c.archived).map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      ) : conName}
+                    </td>
                     <td style={s.cell}>
                       {isEditing ? (
                         <input type="text" value={editData.description} onChange={e => setEditData(p => ({ ...p, description: e.target.value }))} style={s.editInput} placeholder="Descripción..." />
@@ -385,7 +473,14 @@ export default function Historial() {
                         <span style={{ color: tx.description ? 'var(--text-secondary)' : 'var(--text-dim)' }}>{tx.description || '–'}</span>
                       )}
                     </td>
-                    <td style={s.cellMuted}>{tx.person || '–'}</td>
+                    <td style={s.cellMuted}>
+                      {isEditing ? (
+                        <select value={editData.person_id || ''} onChange={e => setEditData(p => ({ ...p, person_id: e.target.value || null }))} style={s.editInput}>
+                          <option value="">–</option>
+                          {persons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      ) : (tx.person || '–')}
+                    </td>
                     <td style={s.cellMono}>
                       {tx.exchange_rate ? parseFloat(tx.exchange_rate).toLocaleString('es-AR', { maximumFractionDigits: 2 }) : <span style={{ color: 'var(--text-dim)' }}>–</span>}
                     </td>
