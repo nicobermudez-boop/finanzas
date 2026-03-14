@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { usePrivacy } from '../context/PrivacyContext'
 import {
   TrendingUp,
   PlusCircle,
@@ -17,6 +18,8 @@ import {
   Settings,
   LayoutDashboard,
   Search,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 
 const navSections = [
@@ -169,6 +172,7 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const { signOut } = useAuth()
   const { mode, cycleTheme } = useTheme()
+  const { hideNumbers, toggleHideNumbers } = usePrivacy()
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -261,6 +265,17 @@ export default function Sidebar() {
       </nav>
 
       <div style={styles.footer}>
+        <button
+          onClick={toggleHideNumbers}
+          style={styles.footerBtn(isCollapsed)}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+          title={isCollapsed ? (hideNumbers ? 'Mostrar cifras' : 'Ocultar cifras') : ''}
+        >
+          {hideNumbers ? <EyeOff size={18} /> : <Eye size={18} />}
+          {!isCollapsed && <span>{hideNumbers ? 'Mostrar cifras' : 'Ocultar cifras'}</span>}
+        </button>
+
         <button
           onClick={cycleTheme}
           style={styles.footerBtn(isCollapsed)}

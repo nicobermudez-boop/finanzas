@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
+import { usePrivacy } from '../context/PrivacyContext'
 import {
   XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Line
@@ -45,7 +46,7 @@ function fmtCompact(value, currency) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', ...opts }).format(value)
 }
 
-function CustomTooltip({ active, payload, label, currency }) {
+function CustomTooltip({ active, payload, label, currency, hideNumbers }) {
   if (!active || !payload?.length) return null
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)' }}>
@@ -54,7 +55,7 @@ function CustomTooltip({ active, payload, label, currency }) {
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color || p.stroke }} />
           <span style={{ color: 'var(--text-secondary)' }}>{p.name}:</span>
-          <span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)' }}>{fmt(p.value, currency)}</span>
+          <span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)' }}>{hideNumbers ? '••••••' : fmt(p.value, currency)}</span>
         </div>
       ))}
     </div>
@@ -62,6 +63,8 @@ function CustomTooltip({ active, payload, label, currency }) {
 }
 
 export default function Dashboard() {
+  const { hideNumbers } = usePrivacy()
+  const H = (s) => hideNumbers ? '••••••' : s
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState('ARS')
@@ -283,11 +286,11 @@ export default function Dashboard() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 8 }}>{kpi.label}</div>
                   <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: kpi.color, letterSpacing: '-0.02em', marginBottom: 8 }}>
-                    {fmt(kpi.value, currency)}
+                    {H(fmt(kpi.value, currency))}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.7 }}>
-                    {kpi.yaPct !== null && <div>vs YA: <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood), fontWeight: 600 }}>{kpi.yaPct >= 0 ? '+' : ''}{kpi.yaPct.toFixed(1)}%</span> <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>({kpi.yaDiff >= 0 ? '+' : ''}{fmtCompact(kpi.yaDiff, currency)})</span></div>}
-                    {kpi.pct !== null && <div>vs Per: <span style={{ color: vc(kpi.diff, kpi.upIsGood), fontWeight: 600 }}>{kpi.pct >= 0 ? '+' : ''}{kpi.pct.toFixed(1)}%</span> <span style={{ color: vc(kpi.diff, kpi.upIsGood) }}>({kpi.diff >= 0 ? '+' : ''}{fmtCompact(kpi.diff, currency)})</span></div>}
+                    {kpi.yaPct !== null && <div>vs YA: <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood), fontWeight: 600 }}>{kpi.yaPct >= 0 ? '+' : ''}{kpi.yaPct.toFixed(1)}%</span> <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>({H(`${kpi.yaDiff >= 0 ? '+' : ''}${fmtCompact(kpi.yaDiff, currency)}`)})</span></div>}
+                    {kpi.pct !== null && <div>vs Per: <span style={{ color: vc(kpi.diff, kpi.upIsGood), fontWeight: 600 }}>{kpi.pct >= 0 ? '+' : ''}{kpi.pct.toFixed(1)}%</span> <span style={{ color: vc(kpi.diff, kpi.upIsGood) }}>({H(`${kpi.diff >= 0 ? '+' : ''}${fmtCompact(kpi.diff, currency)}`)})</span></div>}
                   </div>
                 </div>
                 {/* Divider */}
@@ -296,11 +299,11 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end', minWidth: 80 }}>
                   <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4 }}>Prom/mes</div>
                   <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', marginBottom: 6 }}>
-                    {fmtCompact(kpi.avg, currency)}
+                    {H(fmtCompact(kpi.avg, currency))}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.7, textAlign: 'right' }}>
-                    {kpi.yaPct !== null && <div style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>YA {yaAvgDiff >= 0 ? '+' : ''}{fmtCompact(yaAvgDiff, currency)}</div>}
-                    {kpi.pct !== null && <div style={{ color: vc(kpi.diff, kpi.upIsGood) }}>Per {prevAvgDiff >= 0 ? '+' : ''}{fmtCompact(prevAvgDiff, currency)}</div>}
+                    {kpi.yaPct !== null && <div style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>YA {H(`${yaAvgDiff >= 0 ? '+' : ''}${fmtCompact(yaAvgDiff, currency)}`)}</div>}
+                    {kpi.pct !== null && <div style={{ color: vc(kpi.diff, kpi.upIsGood) }}>Per {H(`${prevAvgDiff >= 0 ? '+' : ''}${fmtCompact(prevAvgDiff, currency)}`)}</div>}
                   </div>
                 </div>
               </div>
@@ -316,8 +319,8 @@ export default function Dashboard() {
               <ComposedChart data={chartData} barCategoryGap="20%">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
                 <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => fmtCompact(v, currency)} width={60} />
-                <Tooltip content={<CustomTooltip currency={currency} />} />
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => hideNumbers ? '•••' : fmtCompact(v, currency)} width={60} />
+                <Tooltip content={<CustomTooltip currency={currency} hideNumbers={hideNumbers} />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="Ingresos" fill="#22c55e" opacity={0.8} radius={[3, 3, 0, 0]} />
                 <Bar dataKey="Gastos" fill="#ef4444" opacity={0.8} radius={[3, 3, 0, 0]} />

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
+import { usePrivacy } from '../context/PrivacyContext'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer
@@ -46,7 +47,7 @@ function fmtLabel(value, currency) {
   return `${sign}$${Math.round(abs)}`
 }
 
-function CustomTooltip({ active, payload, label, currency }) {
+function CustomTooltip({ active, payload, label, currency, hideNumbers }) {
   if (!active || !payload?.length) return null
   return (
     <div style={{
@@ -63,7 +64,7 @@ function CustomTooltip({ active, payload, label, currency }) {
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
           <span style={{ color: 'var(--text-secondary)' }}>{p.name}:</span>
           <span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)' }}>
-            {fmt(p.value, currency)}
+            {hideNumbers ? '••••••' : fmt(p.value, currency)}
           </span>
         </div>
       ))}
@@ -72,6 +73,7 @@ function CustomTooltip({ active, payload, label, currency }) {
 }
 
 export default function Evolucion() {
+  const { hideNumbers } = usePrivacy()
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState('ARS')
@@ -315,11 +317,11 @@ export default function Evolucion() {
                   tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={v => fmt(v, currency)}
+                  tickFormatter={v => hideNumbers ? '•••' : fmt(v, currency)}
                   width={65}
                   domain={[0, dataMax => Math.round(dataMax * 1.15)]}
                 />
-                <Tooltip content={<CustomTooltip currency={currency} />} />
+                <Tooltip content={<CustomTooltip currency={currency} hideNumbers={hideNumbers} />} />
                 <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-muted)' }} />
                 <Bar
                   dataKey={compYear.toString()}
@@ -327,14 +329,14 @@ export default function Evolucion() {
                   fill={activeView.colorLight}
                   opacity={0.35}
                   radius={[3, 3, 0, 0]}
-                  label={{ position: 'top', fill: 'var(--text-dim)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => v ? fmtLabel(v, currency) : '' }}
+                  label={{ position: 'top', fill: 'var(--text-dim)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => hideNumbers ? '' : (v ? fmtLabel(v, currency) : '') }}
                 />
                 <Bar
                   dataKey={baseYear.toString()}
                   name={baseYear.toString()}
                   fill={activeView.color}
                   radius={[3, 3, 0, 0]}
-                  label={{ position: 'top', fill: 'var(--text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => v ? fmtLabel(v, currency) : '' }}
+                  label={{ position: 'top', fill: 'var(--text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => hideNumbers ? '' : (v ? fmtLabel(v, currency) : '') }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -360,11 +362,11 @@ export default function Evolucion() {
                   tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={v => fmt(v, currency)}
+                  tickFormatter={v => hideNumbers ? '•••' : fmt(v, currency)}
                   width={65}
                   domain={[0, dataMax => Math.round(dataMax * 1.12)]}
                 />
-                <Tooltip content={<CustomTooltip currency={currency} />} />
+                <Tooltip content={<CustomTooltip currency={currency} hideNumbers={hideNumbers} />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line
                   type="monotone"
@@ -374,7 +376,7 @@ export default function Evolucion() {
                   strokeOpacity={0.4}
                   strokeDasharray="6 3"
                   dot={false}
-                  label={{ position: 'bottom', fill: 'var(--text-dim)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => v ? fmtLabel(v, currency) : '' }}
+                  label={{ position: 'bottom', fill: 'var(--text-dim)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => hideNumbers ? '' : (v ? fmtLabel(v, currency) : '') }}
                 />
                 <Line
                   type="monotone"
@@ -385,7 +387,7 @@ export default function Evolucion() {
                   dot={{ fill: activeView.color, r: 3 }}
                   activeDot={{ r: 5 }}
                   connectNulls={false}
-                  label={{ position: 'top', fill: 'var(--text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => v ? fmtLabel(v, currency) : '' }}
+                  label={{ position: 'top', fill: 'var(--text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", formatter: v => hideNumbers ? '' : (v ? fmtLabel(v, currency) : '') }}
                 />
               </LineChart>
             </ResponsiveContainer>

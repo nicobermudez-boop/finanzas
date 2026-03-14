@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
+import { usePrivacy } from '../context/PrivacyContext'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ComposedChart, Bar, Line, LabelList,
@@ -43,7 +44,7 @@ function fmtSmart(v, c) {
   return abs >= th ? fmtC(v, c) : fmt(v, c)
 }
 
-function CustomTooltip({ active, payload, label, currency }) {
+function CustomTooltip({ active, payload, label, currency, hideNumbers }) {
   if (!active || !payload?.length) return null
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13, boxShadow: 'var(--shadow-md)', maxWidth: 320 }}>
@@ -53,7 +54,7 @@ function CustomTooltip({ active, payload, label, currency }) {
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color || p.fill || p.stroke, flexShrink: 0 }} />
           <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{p.name}:</span>
           <span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)' }}>
-            {p.dataKey === '% Ingresos' ? `${p.value}%` : fmt(p.value, currency)}
+            {p.dataKey === '% Ingresos' ? `${p.value}%` : (hideNumbers ? '••••••' : fmt(p.value, currency))}
           </span>
         </div>
       ))}
@@ -93,6 +94,8 @@ function FilterDrawer({ title, items, selected, onToggle, icon }) {
 }
 
 export default function Gastos() {
+  const { hideNumbers } = usePrivacy()
+  const H = (s) => hideNumbers ? '••••••' : s
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
   const [subcategories, setSubcategories] = useState([])
@@ -360,7 +363,7 @@ export default function Gastos() {
 
   const TotalLabel = (props) => {
     const { x, y, width, value, viewBox } = props
-    if (!value) return null
+    if (!value || hideNumbers) return null
     const chartTop = 10
     const labelY = y - 6 < chartTop ? y + 14 : y - 6
     const fill = y - 6 < chartTop ? '#fff' : 'var(--text-muted)'
@@ -438,12 +441,12 @@ export default function Gastos() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 6 }}>Total Gastos</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense)' }}>{fmt(kpis.totalExp, currency)}</div>
-              <div style={{ fontSize: 11, color: 'var(--color-expense)', opacity: 0.55, fontFamily: "'JetBrains Mono', monospace" }}>prom/mes {fmtC(kpis.avgM, currency)}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense)' }}>{H(fmt(kpis.totalExp, currency))}</div>
+              <div style={{ fontSize: 11, color: 'var(--color-expense)', opacity: 0.55, fontFamily: "'JetBrains Mono', monospace" }}>prom/mes {H(fmtC(kpis.avgM, currency))}</div>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
-              {kpis.yaTotalExp > 0 && <div>vs año ant: <span style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.yaTotalExp))}</span> <span>({(kpis.totalExp - kpis.yaTotalExp) >= 0 ? '+' : ''}{fmtC(kpis.totalExp - kpis.yaTotalExp, currency)})</span></div>}
-              {kpis.prevTotalExp > 0 && <div>vs per. ant: <span style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.prevTotalExp))}</span> <span>({(kpis.totalExp - kpis.prevTotalExp) >= 0 ? '+' : ''}{fmtC(kpis.totalExp - kpis.prevTotalExp, currency)})</span></div>}
+              {kpis.yaTotalExp > 0 && <div>vs año ant: <span style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.yaTotalExp))}</span> <span>({H(`${(kpis.totalExp - kpis.yaTotalExp) >= 0 ? '+' : ''}${fmtC(kpis.totalExp - kpis.yaTotalExp, currency)}`)})</span></div>}
+              {kpis.prevTotalExp > 0 && <div>vs per. ant: <span style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.prevTotalExp))}</span> <span>({H(`${(kpis.totalExp - kpis.prevTotalExp) >= 0 ? '+' : ''}${fmtC(kpis.totalExp - kpis.prevTotalExp, currency)}`)})</span></div>}
             </div>
           </div>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 16 }}>
@@ -466,9 +469,9 @@ export default function Gastos() {
               <ComposedChart data={barData} barCategoryGap="15%">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
                 <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => fmtC(v, currency)} width={60} />
+                <YAxis yAxisId="left" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => hideNumbers ? '•••' : fmtC(v, currency)} width={60} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} width={45} domain={[0, 'auto']} />
-                <Tooltip content={<CustomTooltip currency={currency} />} />
+                <Tooltip content={<CustomTooltip currency={currency} hideNumbers={hideNumbers} />} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 {Object.keys(catColors).map((cid, i, arr) => (
                   <Bar key={cid} yAxisId="left" dataKey={catMap[cid]?.name || cid} stackId="exp" fill={catColors[cid]}>
@@ -498,7 +501,7 @@ export default function Gastos() {
                 <div key={i}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 12 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{d.name}</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)', fontWeight: 500, fontSize: 11 }}>{fmtSmart(d.value, currency)} <span style={{ color: 'var(--text-dim)' }}>({d.pct.toFixed(0)}%)</span></span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)', fontWeight: 500, fontSize: 11 }}>{H(fmtSmart(d.value, currency))} <span style={{ color: 'var(--text-dim)' }}>({d.pct.toFixed(0)}%)</span></span>
                   </div>
                   <div style={{ width: '100%', height: 6, background: 'var(--bg-tertiary)', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{ width: `${d.pct}%`, height: '100%', background: COLORS[i % COLORS.length], borderRadius: 3, transition: 'width 0.3s ease' }} />
@@ -553,8 +556,8 @@ export default function Gastos() {
                           {r.parent && <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{r.parent}</div>}
                         </td>
                         <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                          <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense-light)' }}>{fmtSmart(r.total, currency)}</div>
-                          <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-dim)' }}>{fmtSmart(r.avg, currency)}</div>
+                          <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense-light)' }}>{H(fmtSmart(r.total, currency))}</div>
+                          <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-dim)' }}>{H(fmtSmart(r.avg, currency))}</div>
                         </td>
                         <td style={{ padding: '6px 8px', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", textAlign: 'right', color: 'var(--text-muted)' }}>{r.pctIncome}%</td>
                         <td style={{ padding: '6px 8px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", textAlign: 'right', color: vColor(diffAbs, true), fontWeight: 500 }}>
@@ -562,10 +565,10 @@ export default function Gastos() {
                         </td>
                         <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                           <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: vColor(diffAbs, true) }}>
-                            {diffAbs !== 0 ? `${diffAbs >= 0 ? '+' : ''}${fmtSmart(diffAbs, currency)}` : '\u2013'}
+                            {diffAbs !== 0 ? H(`${diffAbs >= 0 ? '+' : ''}${fmtSmart(diffAbs, currency)}`) : '\u2013'}
                           </div>
                           <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: vColor(avgDiffAbs, true), opacity: 0.7 }}>
-                            {avgDiffAbs !== 0 ? `${avgDiffAbs >= 0 ? '+' : ''}${fmtSmart(avgDiffAbs, currency)}` : '\u2013'}
+                            {avgDiffAbs !== 0 ? H(`${avgDiffAbs >= 0 ? '+' : ''}${fmtSmart(avgDiffAbs, currency)}`) : '\u2013'}
                           </div>
                         </td>
                         <td style={{ padding: '6px 8px', textAlign: 'right' }}>
@@ -573,7 +576,7 @@ export default function Gastos() {
                             {bps !== 0 ? `${bps >= 0 ? '+' : ''}${bps}` : '\u2013'}
                           </div>
                           <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: vColor(bpsImpact, true), opacity: 0.7 }}>
-                            {bpsImpact !== 0 ? `${bpsImpact >= 0 ? '+' : ''}${fmtSmart(bpsImpact, currency)}` : '\u2013'}
+                            {bpsImpact !== 0 ? H(`${bpsImpact >= 0 ? '+' : ''}${fmtSmart(bpsImpact, currency)}`) : '\u2013'}
                           </div>
                         </td>
                       </tr>

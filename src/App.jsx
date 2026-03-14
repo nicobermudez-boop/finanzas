@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { PrivacyProvider } from './context/PrivacyContext'
 import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
 import Detallado from './pages/Detallado'
@@ -83,9 +84,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProvider>
-          <AuthGate />
-        </AuthProvider>
+        <PrivacyProvider>
+          <AuthProvider>
+            <AuthGate />
+          </AuthProvider>
+        </PrivacyProvider>
       </ThemeProvider>
     </BrowserRouter>
   )
