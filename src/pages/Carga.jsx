@@ -196,6 +196,38 @@ export default function Carga() {
     }
   }, [incCon])
 
+  const handleRepeat = useCallback((tx) => {
+    setType(tx.type)
+    setAmount(tx.amount.toString())
+    setCur(tx.currency)
+    setDate(new Date().toISOString().slice(0, 10))
+    setPerson(tx.person_id)
+
+    if (tx.type === 'expense') {
+      setCatId(tx.category_id)
+      setSubId(tx.subcategory_id)
+      setConId(tx.concept_id)
+      setPay(tx.payment_method || 'Contado')
+      setInst(tx.installments || 1)
+      setDest(tx.destination || '')
+      setIncCon(null)
+      setIncSub('recurrente')
+    } else {
+      setCatId(null); setSubId(null); setConId(null)
+      setPay('Contado'); setInst(1); setDest('')
+      setIncCon(tx.income_concept)
+      setIncSub(tx.income_subtype || 'recurrente')
+    }
+
+    setDesc(tx.description || '')
+    setIsRec(false)
+    setRFreq('monthly')
+    setRPer(12)
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => aRef.current?.focus(), 350)
+  }, [])
+
   const reset = useCallback(() => {
     setAmount(''); setCatId(null); setSubId(null); setConId(null)
     setPay('Contado'); setInst(1); setDest('')
@@ -477,7 +509,7 @@ export default function Carga() {
       {/* RECENT */}
       {recent.length > 0 && <div className="rs"><div className="rt">Últimos registros</div>
         {recent.map(tx => (
-          <div key={tx.id} className="ri">
+          <div key={tx.id} className="ri" onClick={() => handleRepeat(tx)} title="Repetir transacción">
             <div className="rl">
               <span className="rx">{tx.categories?.icon || '💰'}</span>
               <div className="rn">
@@ -496,8 +528,11 @@ export default function Carga() {
                 </div>
               </div>
             </div>
-            <div className={`ra ${tx.type}`}>
-              {tx.type === 'expense' ? '−' : '+'}{fmt(tx.amount, tx.currency)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <div className={`ra ${tx.type}`}>
+                {tx.type === 'expense' ? '−' : '+'}{fmt(tx.amount, tx.currency)}
+              </div>
+              <span style={{ fontSize: 13, color: 'var(--txd)', opacity: 0.6 }}>↩</span>
             </div>
           </div>))}
       </div>}
