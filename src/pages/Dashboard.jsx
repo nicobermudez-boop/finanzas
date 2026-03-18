@@ -67,6 +67,7 @@ export default function Dashboard() {
   const H = (s) => hideNumbers ? '••••••' : s
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [currency, setCurrency] = useState('ARS')
   const [period, setPeriod] = useState('ytd')
   const now0 = new Date()
@@ -77,15 +78,20 @@ export default function Dashboard() {
   const [excludeViajes, setExcludeViajes] = useState(false)
   const [excludeExtra, setExcludeExtra] = useState(false)
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
+  async function loadData() {
+    setLoading(true)
+    setLoadError(null)
+    try {
       const data = await fetchAllTransactions(null, { select: '*, categories(name)', orderCol: 'date', orderAsc: true })
       setTransactions(data)
-      setLoading(false)
+    } catch (e) {
+      console.error('Error loading dashboard:', e)
+      setLoadError('No se pudo cargar el dashboard. Revisá tu conexión e intentá de nuevo.')
     }
-    fetchData()
-  }, [])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadData() }, [])
 
   const { kpis, chartData } = useMemo(() => {
     let filtered = [...transactions]
@@ -220,6 +226,21 @@ export default function Dashboard() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: 'var(--text-muted)' }}>
         <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /><span>Cargando...</span>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, padding: 32, textAlign: 'center' }}>
+        <div style={{ fontSize: 32 }}>⚠️</div>
+        <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Error al cargar</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{loadError}</div>
+        <button onClick={loadData} style={{
+          padding: '10px 24px', background: 'var(--color-accent)', color: '#fff',
+          border: 'none', borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}>Reintentar</button>
       </div>
     )
   }

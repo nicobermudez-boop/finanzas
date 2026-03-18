@@ -192,30 +192,40 @@ function CategoriesTab({ user }) {
   const [concepts, setConcepts] = useState([])
   const [txCounts, setTxCounts] = useState({})
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [crudError, setCrudError] = useState(null)
   const [selectedCat, setSelectedCat] = useState(null)
   const [selectedSub, setSelectedSub] = useState(null)
   const [catType, setCatType] = useState('expense')
   // Wizard: { step: 'sub'|'concept', catId, subId, catName, subName }
   const [wizard, setWizard] = useState(null)
 
+  const showCrudError = (msg) => { setCrudError(msg); setTimeout(() => setCrudError(null), 3000) }
+
   const loadAll = async () => {
     setLoading(true)
-    const [catR, subR, conR] = await Promise.all([
-      supabase.from('categories').select('*').order('name'),
-      supabase.from('subcategories').select('*').order('name'),
-      supabase.from('concepts').select('*').order('name'),
-    ])
-    setCategories(catR.data || [])
-    setSubcategories(subR.data || [])
-    setConcepts(conR.data || [])
-    const { data: txData } = await supabase.from('transactions').select('category_id, subcategory_id, concept_id')
-    const counts = {}
-    ;(txData || []).forEach(t => {
-      if (t.category_id) counts[`cat_${t.category_id}`] = (counts[`cat_${t.category_id}`] || 0) + 1
-      if (t.subcategory_id) counts[`sub_${t.subcategory_id}`] = (counts[`sub_${t.subcategory_id}`] || 0) + 1
-      if (t.concept_id) counts[`con_${t.concept_id}`] = (counts[`con_${t.concept_id}`] || 0) + 1
-    })
-    setTxCounts(counts)
+    setLoadError(null)
+    try {
+      const [catR, subR, conR] = await Promise.all([
+        supabase.from('categories').select('*').order('name'),
+        supabase.from('subcategories').select('*').order('name'),
+        supabase.from('concepts').select('*').order('name'),
+      ])
+      setCategories(catR.data || [])
+      setSubcategories(subR.data || [])
+      setConcepts(conR.data || [])
+      const { data: txData } = await supabase.from('transactions').select('category_id, subcategory_id, concept_id')
+      const counts = {}
+      ;(txData || []).forEach(t => {
+        if (t.category_id) counts[`cat_${t.category_id}`] = (counts[`cat_${t.category_id}`] || 0) + 1
+        if (t.subcategory_id) counts[`sub_${t.subcategory_id}`] = (counts[`sub_${t.subcategory_id}`] || 0) + 1
+        if (t.concept_id) counts[`con_${t.concept_id}`] = (counts[`con_${t.concept_id}`] || 0) + 1
+      })
+      setTxCounts(counts)
+    } catch (e) {
+      console.error('Error loading categories:', e)
+      setLoadError('No se pudieron cargar las categorías. Intentá de nuevo.')
+    }
     setLoading(false)
   }
 
@@ -227,52 +237,93 @@ function CategoriesTab({ user }) {
 
   // Category CRUD
   const addCat = async (name) => {
-    const { data } = await supabase.from('categories').insert({ name, type: catType, user_id: user.id }).select().single()
+    const { data, error } = await supabase.from('categories').insert({ name, type: catType, user_id: user.id }).select().single()
+    if (error) { showCrudError('Error al agregar la categoría.'); return }
     await loadAll()
     if (data) setWizard({ step: 'sub', catId: data.id, catName: name })
   }
-  const renameCat = async (id, name) => { await supabase.from('categories').update({ name }).eq('id', id); loadAll() }
+  const renameCat = async (id, name) => {
+    const { error } = await supabase.from('categories').update({ name }).eq('id', id)
+    if (error) { showCrudError('Error al renombrar la categoría.'); return }
+    loadAll()
+  }
   const deleteCat = async (id, reassignId) => {
-    if (reassignId) {
-      await supabase.from('transactions').update({ category_id: reassignId }).eq('category_id', id)
-      await supabase.from('subcategories').update({ category_id: reassignId }).eq('category_id', id)
-    } else {
-      const subIds = subcategories.filter(s => s.category_id === id).map(s => s.id)
-      if (subIds.length) { await supabase.from('concepts').delete().in('subcategory_id', subIds); await supabase.from('subcategories').delete().eq('category_id', id) }
-    }
-    await supabase.from('categories').delete().eq('id', id)
-    setSelectedCat(null); setSelectedSub(null); loadAll()
+    try {
+      if (reassignId) {
+        await supabase.from('transactions').update({ category_id: reassignId }).eq('category_id', id)
+        await supabase.from('subcategories').update({ category_id: reassignId }).eq('category_id', id)
+      } else {
+        const subIds = subcategories.filter(s => s.category_id === id).map(s => s.id)
+        if (subIds.length) { await supabase.from('concepts').delete().in('subcategory_id', subIds); await supabase.from('subcategories').delete().eq('category_id', id) }
+      }
+      await supabase.from('categories').delete().eq('id', id)
+      setSelectedCat(null); setSelectedSub(null); loadAll()
+    } catch (e) { showCrudError('Error al eliminar la categoría.') }
   }
 
   // Subcategory CRUD
   const addSub = async (name) => {
-    const { data } = await supabase.from('subcategories').insert({ name, category_id: selectedCat, user_id: user.id }).select().single()
+    const { data, error } = await supabase.from('subcategories').insert({ name, category_id: selectedCat, user_id: user.id }).select().single()
+    if (error) { showCrudError('Error al agregar la subcategoría.'); return }
     await loadAll()
     if (data) setWizard({ step: 'concept', catId: selectedCat, subId: data.id, subName: name, catName: categories.find(c => c.id === selectedCat)?.name })
   }
-  const renameSub = async (id, name) => { await supabase.from('subcategories').update({ name }).eq('id', id); loadAll() }
-  const moveSub = async (id, newCatId) => { await supabase.from('subcategories').update({ category_id: newCatId }).eq('id', id); loadAll() }
+  const renameSub = async (id, name) => {
+    const { error } = await supabase.from('subcategories').update({ name }).eq('id', id)
+    if (error) { showCrudError('Error al renombrar la subcategoría.'); return }
+    loadAll()
+  }
+  const moveSub = async (id, newCatId) => {
+    const { error } = await supabase.from('subcategories').update({ category_id: newCatId }).eq('id', id)
+    if (error) { showCrudError('Error al mover la subcategoría.'); return }
+    loadAll()
+  }
   const deleteSub = async (id, reassignId) => {
-    if (reassignId) {
-      await supabase.from('transactions').update({ subcategory_id: reassignId }).eq('subcategory_id', id)
-      await supabase.from('concepts').update({ subcategory_id: reassignId }).eq('subcategory_id', id)
-    } else {
-      await supabase.from('concepts').delete().eq('subcategory_id', id)
-    }
-    await supabase.from('subcategories').delete().eq('id', id)
-    setSelectedSub(null); loadAll()
+    try {
+      if (reassignId) {
+        await supabase.from('transactions').update({ subcategory_id: reassignId }).eq('subcategory_id', id)
+        await supabase.from('concepts').update({ subcategory_id: reassignId }).eq('subcategory_id', id)
+      } else {
+        await supabase.from('concepts').delete().eq('subcategory_id', id)
+      }
+      await supabase.from('subcategories').delete().eq('id', id)
+      setSelectedSub(null); loadAll()
+    } catch (e) { showCrudError('Error al eliminar la subcategoría.') }
   }
 
   // Concept CRUD
-  const addCon = async (name) => { await supabase.from('concepts').insert({ name, subcategory_id: selectedSub, user_id: user.id }); loadAll() }
-  const renameCon = async (id, name) => { await supabase.from('concepts').update({ name }).eq('id', id); loadAll() }
-  const moveCon = async (id, newSubId) => { await supabase.from('concepts').update({ subcategory_id: newSubId }).eq('id', id); loadAll() }
+  const addCon = async (name) => {
+    const { error } = await supabase.from('concepts').insert({ name, subcategory_id: selectedSub, user_id: user.id })
+    if (error) { showCrudError('Error al agregar el concepto.'); return }
+    loadAll()
+  }
+  const renameCon = async (id, name) => {
+    const { error } = await supabase.from('concepts').update({ name }).eq('id', id)
+    if (error) { showCrudError('Error al renombrar el concepto.'); return }
+    loadAll()
+  }
+  const moveCon = async (id, newSubId) => {
+    const { error } = await supabase.from('concepts').update({ subcategory_id: newSubId }).eq('id', id)
+    if (error) { showCrudError('Error al mover el concepto.'); return }
+    loadAll()
+  }
   const deleteCon = async (id, reassignId) => {
-    if (reassignId) await supabase.from('transactions').update({ concept_id: reassignId }).eq('concept_id', id)
-    await supabase.from('concepts').delete().eq('id', id); loadAll()
+    try {
+      if (reassignId) await supabase.from('transactions').update({ concept_id: reassignId }).eq('concept_id', id)
+      await supabase.from('concepts').delete().eq('id', id); loadAll()
+    } catch (e) { showCrudError('Error al eliminar el concepto.') }
   }
 
   if (loading) return <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>Cargando...</div>
+
+  if (loadError) return (
+    <div style={{ padding: 24, textAlign: 'center' }}>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+      <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: 6 }}>Error al cargar</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>{loadError}</div>
+      <button onClick={loadAll} style={{ padding: '8px 20px', background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Reintentar</button>
+    </div>
+  )
 
   const catItems = filteredCats.map(c => ({ ...c, txCount: txCounts[`cat_${c.id}`] || 0 }))
   const subItems = filteredSubs.map(s => ({ ...s, txCount: txCounts[`sub_${s.id}`] || 0, parentName: categories.find(c => c.id === s.category_id)?.name }))
@@ -303,6 +354,7 @@ function CategoriesTab({ user }) {
 
       {/* Wizard modal */}
       {wizard && <WizardModal wizard={wizard} user={user} onComplete={async () => { setWizard(null); await loadAll() }} setWizard={setWizard} />}
+      {crudError && <div className="toast error">✗ {crudError}</div>}
 
       <div style={cardStyle}>
         {!selectedCat ? (
@@ -331,37 +383,63 @@ function PersonsTab({ user }) {
   const [persons, setPersons] = useState([])
   const [txCounts, setTxCounts] = useState({})
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [crudError, setCrudError] = useState(null)
+
+  const showCrudError = (msg) => { setCrudError(msg); setTimeout(() => setCrudError(null), 3000) }
 
   const loadAll = async () => {
     setLoading(true)
-    const { data } = await supabase.from('persons').select('*').order('name')
-    setPersons(data || [])
-    const { data: txData } = await supabase.from('transactions').select('person_id')
-    const counts = {}
-    ;(txData || []).forEach(t => { if (t.person_id) counts[t.person_id] = (counts[t.person_id] || 0) + 1 })
-    setTxCounts(counts)
+    setLoadError(null)
+    try {
+      const { data } = await supabase.from('persons').select('*').order('name')
+      setPersons(data || [])
+      const { data: txData } = await supabase.from('transactions').select('person_id')
+      const counts = {}
+      ;(txData || []).forEach(t => { if (t.person_id) counts[t.person_id] = (counts[t.person_id] || 0) + 1 })
+      setTxCounts(counts)
+    } catch (e) {
+      console.error('Error loading persons:', e)
+      setLoadError('No se pudieron cargar las personas. Intentá de nuevo.')
+    }
     setLoading(false)
   }
 
   useEffect(() => { loadAll() }, [])
 
-  const add = async (name) => { await supabase.from('persons').insert({ name, user_id: user.id }); loadAll() }
+  const add = async (name) => {
+    const { error } = await supabase.from('persons').insert({ name, user_id: user.id })
+    if (error) { showCrudError('Error al agregar la persona.'); return }
+    loadAll()
+  }
   const rename = async (id, name) => {
-    await supabase.from('persons').update({ name }).eq('id', id)
+    const { error } = await supabase.from('persons').update({ name }).eq('id', id)
+    if (error) { showCrudError('Error al renombrar la persona.'); return }
     // Also update the text field in transactions for backward compat
     const person = persons.find(p => p.id === id)
     if (person) await supabase.from('transactions').update({ person: name }).eq('person', person.name)
     loadAll()
   }
   const del = async (id, reassignId) => {
-    if (reassignId) {
-      const target = persons.find(p => p.id === reassignId)
-      await supabase.from('transactions').update({ person_id: reassignId, person: target?.name }).eq('person_id', id)
-    }
-    await supabase.from('persons').delete().eq('id', id); loadAll()
+    try {
+      if (reassignId) {
+        const target = persons.find(p => p.id === reassignId)
+        await supabase.from('transactions').update({ person_id: reassignId, person: target?.name }).eq('person_id', id)
+      }
+      await supabase.from('persons').delete().eq('id', id); loadAll()
+    } catch (e) { showCrudError('Error al eliminar la persona.') }
   }
 
   if (loading) return <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>Cargando...</div>
+
+  if (loadError) return (
+    <div style={{ padding: 24, textAlign: 'center' }}>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+      <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: 6 }}>Error al cargar</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>{loadError}</div>
+      <button onClick={loadAll} style={{ padding: '8px 20px', background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Reintentar</button>
+    </div>
+  )
 
   const items = persons.map(p => ({ ...p, txCount: txCounts[p.id] || 0 }))
 
@@ -369,6 +447,7 @@ function PersonsTab({ user }) {
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 16 }}>
       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>Personas</div>
       <CrudList items={items} onAdd={add} onRename={rename} onDelete={del} entityName="persona" />
+      {crudError && <div className="toast error">✗ {crudError}</div>}
     </div>
   )
 }

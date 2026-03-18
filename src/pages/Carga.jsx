@@ -52,6 +52,7 @@ export default function Carga() {
   const [mepRate, setMepRate] = useState(null)
   const [recent, setRecent] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [saving, setSaving] = useState(false)
 
   // Form state
@@ -133,6 +134,7 @@ export default function Carga() {
       setRecent(txs || [])
     } catch (e) {
       console.error('Error loading data:', e)
+      setLoadError('No se pudo cargar la información. Revisá tu conexión e intentá de nuevo.')
     }
     setLoading(false)
   }
@@ -260,7 +262,7 @@ export default function Carga() {
       setTimeout(() => aRef.current?.focus(), 100)
     } catch (e) {
       console.error('Error saving:', e)
-      setToast({ type: 'expense', msg: `Error: ${e.message}` })
+      setToast({ type: 'error', msg: `Error: ${e.message}` })
       setTimeout(() => setToast(null), 3000)
     }
 
@@ -274,6 +276,23 @@ export default function Carga() {
       <div className="app">
         <div className="loading-screen">
           <div className="loading-text">Cargando...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="app">
+        <div style={{ padding: 32, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+          <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: 8 }}>Error al cargar</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{loadError}</div>
+          <button onClick={() => { setLoadError(null); loadData() }} style={{
+            padding: '10px 24px', background: 'var(--color-accent)', color: '#fff',
+            border: 'none', borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>Reintentar</button>
         </div>
       </div>
     )
@@ -483,7 +502,7 @@ export default function Carga() {
           </div>))}
       </div>}
 
-      {toast && <div className={`toast ${toast.type}`}>✓ {toast.msg}</div>}
+      {toast && <div className={`toast ${toast.type}`}>{toast.type === 'error' ? '✗' : '✓'} {toast.msg}</div>}
     </div>
   )
 }

@@ -33,6 +33,8 @@ export default function Historial() {
   const [concepts, setConcepts] = useState([])
   const [persons, setPersons] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [toast, setToast] = useState(null)
   const [tab, setTab] = useState('expense')
   const [page, setPage] = useState(0)
   const [editingId, setEditingId] = useState(null)
@@ -46,8 +48,13 @@ export default function Historial() {
 
   // Fetch all data
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
+    fetchData()
+  }, [user])
+
+  async function fetchData() {
+    setLoading(true)
+    setLoadError(null)
+    try {
       const [txData, catRes, subRes, conRes, persRes] = await Promise.all([
         fetchAllTransactions(user.id, { orderCol: 'created_at', orderAsc: false }),
         supabase.from('categories').select('*'),
@@ -60,10 +67,12 @@ export default function Historial() {
       setSubcategories(subRes.data || [])
       setConcepts(conRes.data || [])
       setPersons(persRes.data || [])
-      setLoading(false)
+    } catch (e) {
+      console.error('Error loading historial:', e)
+      setLoadError('No se pudo cargar el historial. Revisá tu conexión e intentá de nuevo.')
     }
-    fetchData()
-  }, [user])
+    setLoading(false)
+  }
 
   const catMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories])
   const subMap = useMemo(() => Object.fromEntries(subcategories.map(s => [s.id, s])), [subcategories])
@@ -198,6 +207,10 @@ export default function Historial() {
         t.id === id ? { ...t, ...updateData } : t
       ))
       setEditingId(null)
+    } else {
+      console.error('Error saving edit:', error)
+      setToast({ type: 'error', msg: 'Error al guardar los cambios.' })
+      setTimeout(() => setToast(null), 3000)
     }
     setSaving(false)
   }
@@ -212,6 +225,10 @@ export default function Historial() {
     if (!error) {
       setTransactions(prev => prev.filter(t => t.id !== id))
       setDeletingId(null)
+    } else {
+      console.error('Error deleting transaction:', error)
+      setToast({ type: 'error', msg: 'Error al eliminar la transacción.' })
+      setTimeout(() => setToast(null), 3000)
     }
     setSaving(false)
   }
@@ -270,6 +287,21 @@ export default function Historial() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: 'var(--text-muted)' }}>
         <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
         <span>Cargando...</span>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, padding: 32, textAlign: 'center' }}>
+        <div style={{ fontSize: 32 }}>⚠️</div>
+        <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Error al cargar</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{loadError}</div>
+        <button onClick={fetchData} style={{
+          padding: '10px 24px', background: 'var(--color-accent)', color: '#fff',
+          border: 'none', borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}>Reintentar</button>
       </div>
     )
   }
@@ -558,6 +590,8 @@ export default function Historial() {
           </div>
         </div>
       )}
+
+      {toast && <div className={`toast ${toast.type}`}>✗ {toast.msg}</div>}
     </div>
   )
 }
