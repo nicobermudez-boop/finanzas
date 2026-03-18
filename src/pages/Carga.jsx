@@ -150,6 +150,21 @@ export default function Carga() {
   // Auto-select single subcategory (or auto-select for Viajes)
   useEffect(() => { if (subs.length === 1 || isV) setSubId(subs[0]?.id || null) }, [subs, isV])
 
+  // Pre-fill destination with last used value when Viajes is selected
+  useEffect(() => {
+    if (!isV || !user) return
+    ;(async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('destination')
+        .eq('user_id', user.id)
+        .not('destination', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (data?.[0]?.destination) setDest(prev => prev || data[0].destination)
+    })()
+  }, [isV, user])
+
   // Fetch top 5 descriptions for current cat+sub+concept combo
   useEffect(() => {
     if (!conId) { setTopDescs([]); return }
@@ -450,6 +465,9 @@ export default function Carga() {
                 <div className="rc2">
                   {tx.concepts?.name || tx.income_concept || ''}
                   {tx.destination && <span style={{ color: 'var(--txd)' }}> · {tx.destination}</span>}
+                  {tx.description && tx.description !== (tx.concepts?.name || tx.income_concept) && (
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {tx.description}</span>
+                  )}
                 </div>
                 <div className="rd">
                   {tx.categories?.name || 'Ingresos'} · {tx.person} · {tx.date}
