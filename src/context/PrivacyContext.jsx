@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo } from 'react
 
 const PrivacyContext = createContext({})
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePrivacy = () => useContext(PrivacyContext)
 
 export function PrivacyProvider({ children }) {

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 
 const ThemeContext = createContext({})
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => useContext(ThemeContext)
 
 // 3 modes: 'auto' | 'light' | 'dark'

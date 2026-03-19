@@ -62,11 +62,7 @@ export default function Carga() {
   const aRef = useRef(null)
 
   // Load initial data
-  useEffect(() => {
-    loadData()
-  }, [user])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       // Load categories with subcategories and concepts
@@ -120,7 +116,9 @@ export default function Carga() {
       setLoadError('No se pudo cargar la información. Revisá tu conexión e intentá de nuevo.')
     }
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => { loadData() }, [loadData])
 
   // Derived
   const expenseCats = useMemo(() => categories.filter(c => c.type === 'expense'), [categories])

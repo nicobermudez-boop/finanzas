@@ -49,7 +49,7 @@ export default function PersonsTab({ user }) {
         await supabase.from('transactions').update({ person_id: reassignId, person: target?.name }).eq('person_id', id)
       }
       await supabase.from('persons').delete().eq('id', id); loadAll()
-    } catch (e) { showCrudError('Error al eliminar la persona.') }
+    } catch { showCrudError('Error al eliminar la persona.') }
   }
 
   if (loading) return <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>Cargando...</div>

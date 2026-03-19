@@ -68,8 +68,8 @@ export async function getLatestRate() {
   try {
     const rate = await fetchMEPFromAPI()
     if (rate) return rate
-  } catch {}
-  
+  } catch { /* API unavailable, fall through to DB */ }
+
   // Fallback to DB
   const { data } = await supabase
     .from('exchange_rates')

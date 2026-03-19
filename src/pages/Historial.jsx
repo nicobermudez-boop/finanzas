@@ -39,11 +39,7 @@ export default function Historial() {
   const setFilter = (key, val) => { setColFilters(prev => ({ ...prev, [key]: val })); setPage(0) }
 
   // Fetch all data
-  useEffect(() => {
-    fetchData()
-  }, [user])
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
     try {
@@ -64,7 +60,9 @@ export default function Historial() {
       setLoadError('No se pudo cargar el historial. Revisá tu conexión e intentá de nuevo.')
     }
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   const catMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories])
   const subMap = useMemo(() => Object.fromEntries(subcategories.map(s => [s.id, s])), [subcategories])
@@ -267,7 +265,7 @@ export default function Historial() {
     editInput: { padding: '4px 8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' },
     filterInput: { width: '100%', padding: '4px 8px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 11, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
     filterSelect: { width: '100%', padding: '4px 6px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 11, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
-    iconBtn: (color) => ({
+    iconBtn: () => ({
       background: 'none', border: 'none', cursor: 'pointer', padding: 4,
       color: 'var(--text-muted)', transition: 'color 0.15s',
       display: 'flex', alignItems: 'center',
