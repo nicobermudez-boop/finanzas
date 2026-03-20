@@ -63,7 +63,7 @@ npm run lint     # Run ESLint
 ```
 finanzas/
 ├── index.html              # HTML entry point — PWA meta, Google Fonts, SW registration
-├── vite.config.js          # Minimal Vite config with React plugin
+├── vite.config.js          # Vite config with React plugin + manual chunk splitting
 ├── eslint.config.js        # ESLint flat config (ES2020, React hooks)
 ├── .env.example            # Required env var template
 ├── public/
@@ -72,31 +72,47 @@ finanzas/
 │   └── icons/              # PWA icons (72px – 512px)
 └── src/
     ├── main.jsx            # React entry point
-    ├── App.jsx             # Root: providers + BrowserRouter + route layout
+    ├── App.jsx             # Root: providers + BrowserRouter + lazy routes
     ├── index.css           # CSS custom properties (light/dark theme variables)
     ├── styles.css          # Additional component styles
     ├── context/
     │   ├── AuthContext.jsx     # Supabase Auth session state & methods
-    │   └── ThemeContext.jsx    # Light/dark/auto theme with localStorage persistence
+    │   ├── ThemeContext.jsx    # Light/dark/auto theme with localStorage persistence
+    │   └── PrivacyContext.jsx  # Hide-numbers privacy mode with localStorage persistence
+    ├── hooks/
+    │   └── useIsMobile.js      # Responsive breakpoint hook (default 768px)
     ├── lib/
     │   ├── supabase.js         # Supabase client singleton
     │   ├── transactions.js     # createTransaction() — handles installments & recurrence
     │   ├── exchangeRate.js     # MEP rate fetching with DB cache (dolarapi.com)
-    │   └── fetchAll.js         # Paginated Supabase fetcher (bypasses 1000-row limit)
+    │   ├── fetchAll.js         # Paginated Supabase fetcher (bypasses 1000-row limit)
+    │   ├── format.js           # Centralized currency formatting utilities
+    │   └── currency.js         # getAmount() — ARS↔USD conversion for display
     ├── components/
-    │   ├── Sidebar.jsx         # Navigation sidebar with theme toggle & mobile support
-    │   ├── CurrencyToggle.jsx  # ARS / USD switcher button pair
-    │   ├── Auth.jsx            # (Legacy) auth form component
-    │   └── TransactionForm.jsx # (Legacy) transaction form component
+    │   ├── Sidebar.jsx             # Navigation sidebar with theme toggle & mobile support
+    │   ├── CurrencyToggle.jsx      # ARS / USD switcher button pair
+    │   ├── RecentTransactions.jsx  # Recent transactions list with repeat action
+    │   ├── CategoryGrid.jsx        # Visual category picker grid (used in Carga)
+    │   ├── SelectionPills.jsx      # Pill-style option selector (used in Carga)
+    │   ├── Auth.jsx                # (Legacy) auth form component
+    │   └── TransactionForm.jsx     # (Legacy) transaction form component
     └── pages/
         ├── Login.jsx           # Login / signup / forgot-password page
-        ├── Carga.jsx           # Transaction entry form (largest page, 471 lines)
+        ├── Carga.jsx           # Transaction entry form (~502 lines)
         ├── Dashboard.jsx       # KPI cards + cashflow chart with period filters
         ├── Evolucion.jsx       # Monthly income/expense/savings trend charts
         ├── Gastos.jsx          # Category expense breakdown table with sorting
         ├── Detallado.jsx       # Detailed monthly breakdown by category/concept
         ├── Historial.jsx       # Transaction history with pagination & inline editing
-        └── Configuracion.jsx   # Settings: exchange rates, categories, persons, import
+        └── Configuracion/      # Settings — split into tab components
+            ├── index.jsx           # Tab switcher (Categorías, Personas, Tasas, Importar, Cuenta)
+            ├── AccountTab.jsx      # Account/password management
+            ├── CategoriesTab.jsx   # Category/subcategory/concept CRUD
+            ├── CrudList.jsx        # Reusable inline-edit list component
+            ├── ImportTab.jsx       # CSV import flow
+            ├── PersonsTab.jsx      # Household member management
+            ├── RatesTab.jsx        # Exchange rate management
+            └── WizardModal.jsx     # Step-by-step creation modal
 ```
 
 ---
@@ -108,13 +124,15 @@ Defined in `src/App.jsx`. All routes require authentication (enforced by `AuthGa
 | Route | Component | Purpose |
 |---|---|---|
 | `/login` | Login.jsx | Auth page (login / signup / reset) |
-| `/` | Carga.jsx | Transaction entry form |
+| `/carga` | Carga.jsx | Transaction entry form (default route) |
 | `/dashboard` | Dashboard.jsx | KPI summary & cashflow chart |
 | `/evolucion` | Evolucion.jsx | Monthly trend analysis |
 | `/gastos` | Gastos.jsx | Category expense breakdown |
 | `/detallado` | Detallado.jsx | Detailed category/concept table |
 | `/historial` | Historial.jsx | Transaction history & editing |
-| `/configuracion` | Configuracion.jsx | App settings & management |
+| `/configuracion` | Configuracion/index.jsx | App settings & management |
+
+All unmatched routes (`*`) redirect to `/carga`. Pages are loaded with `React.lazy` + `Suspense` for code splitting.
 
 ---
 
@@ -122,12 +140,15 @@ Defined in `src/App.jsx`. All routes require authentication (enforced by `AuthGa
 
 ### State Management
 
-No Redux or Zustand. Two Context providers in `src/context/`:
+No Redux or Zustand. Three Context providers in `src/context/`:
 
-- **AuthContext** — Wraps Supabase Auth. Provides `user`, `loading`, `signIn`, `signUp`, `signOut`, `resetPassword`. Listens to `onAuthStateChange`.
+- **AuthContext** — Wraps Supabase Auth. Provides `user`, `loading`, `isRecovery`, `setIsRecovery`, `signIn`, `signUp`, `signOut`, `resetPassword`. Listens to `onAuthStateChange`.
 - **ThemeContext** — Manages `auto` / `light` / `dark` mode. Reads OS preference via `matchMedia`. Persists to `localStorage`. Applies `data-theme` attribute on `<html>`. Exposes `cycleTheme()` (auto → light → dark → auto).
+- **PrivacyContext** — Manages `hideNumbers` boolean for privacy mode. Persists to `localStorage` (`'hide-numbers'` key). Exposes `toggleHideNumbers()`. Use `usePrivacy()` hook.
 
-Provider order in App.jsx: `AuthProvider` → `ThemeProvider` → `BrowserRouter`.
+Provider order in App.jsx: `BrowserRouter` → `ThemeProvider` → `PrivacyProvider` → `AuthProvider`.
+
+There is also a custom hook `src/hooks/useIsMobile.js` that tracks window width against a breakpoint (default 768px) and returns a boolean. Used in App.jsx to adjust sidebar margin.
 
 ### Supabase Queries
 
@@ -152,9 +173,13 @@ Supabase returns a maximum of 1000 rows per query. Use `fetchAllTransactions()` 
 ```js
 import { fetchAllTransactions } from '../lib/fetchAll'
 
-const data = await fetchAllTransactions({
-  filters: [{ type: 'eq', column: 'type', value: 'expense' }],
-  order: { column: 'date', ascending: false },
+// userId is required as the first argument; opts is optional
+const data = await fetchAllTransactions(user.id, {
+  select: '*, categories(name)',          // default '*'
+  eq: [['type', 'expense']],              // array of [column, value] pairs
+  gte: [['date', '2024-01-01']],          // array of [column, value] pairs
+  orderCol: 'date',                       // default 'created_at'
+  orderAsc: false,                        // default false
 })
 ```
 
@@ -311,11 +336,25 @@ useEffect(() => {
 
 ### Formatting Currency
 
-Throughout the app, amounts are displayed using `Intl.NumberFormat` with locale `es-AR`:
+Currency formatting is centralized in `src/lib/format.js`. Import from there — do not define local formatters.
 
 ```js
-const fmt = (val, currency = 'ARS') =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(val)
+import { fmt, fmtCompact, fmtSmart, fmtForm, fmtInput, fmtLabel } from '../lib/format'
+
+fmt(value, currency)          // Full format: "$1.234.567" / "US$1,234" — returns "–" for nulls
+fmtCompact(value, currency)   // Compact: "$1,2M" / "US$1,2k"
+fmtSmart(value, currency)     // Auto-selects fmt or fmtCompact based on magnitude
+fmtLabel(value)               // Chart axis labels: "$1.2M", "$500k", "$300"
+fmtForm(n, currency)          // Form display: "$ 1.234.567" / "US$ 1.234,56"
+fmtInput(raw, currency)       // Live input formatting while typing
+```
+
+For resolving the display amount of a transaction in a target currency, use `getAmount()` from `src/lib/currency.js`:
+
+```js
+import { getAmount } from '../lib/currency'
+
+const displayAmount = getAmount(transaction, 'USD')  // handles ARS↔USD via exchange_rate
 ```
 
 ### Category Hierarchy
@@ -377,13 +416,17 @@ Deployed on **Vercel** (project ID: `prj_UvoAlZ9tBRL2TIUSPIyS2naZAdsX`).
 
 | File | Role |
 |---|---|
-| `src/App.jsx` | Root component, routing, provider composition |
+| `src/App.jsx` | Root component, lazy routing, provider composition |
 | `src/lib/supabase.js` | Supabase client — import `supabase` from here |
 | `src/lib/transactions.js` | Use `createTransaction()` for all new transactions |
-| `src/lib/fetchAll.js` | Use `fetchAllTransactions()` when data may exceed 1000 rows |
+| `src/lib/fetchAll.js` | Use `fetchAllTransactions(userId, opts)` when data may exceed 1000 rows |
 | `src/lib/exchangeRate.js` | Use `getExchangeRate(date)` to get MEP rate |
+| `src/lib/format.js` | Use `fmt()`, `fmtSmart()`, `fmtForm()`, etc. — never define local formatters |
+| `src/lib/currency.js` | Use `getAmount(tx, currency)` to resolve display amount |
 | `src/context/AuthContext.jsx` | Use `useAuth()` hook for user session |
 | `src/context/ThemeContext.jsx` | Use `useTheme()` hook for current theme |
+| `src/context/PrivacyContext.jsx` | Use `usePrivacy()` hook for hide-numbers mode |
+| `src/hooks/useIsMobile.js` | Use for responsive breakpoint detection |
 | `src/index.css` | Edit CSS variables here for theme changes |
 | `src/pages/Carga.jsx` | Transaction entry — most complex form in the app |
-| `src/pages/Configuracion.jsx` | Settings — category/person/rate management |
+| `src/pages/Configuracion/` | Settings — split into tab components |
