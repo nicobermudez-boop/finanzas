@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAllTransactions } from '../../lib/fetchAll'
 import { ChevronRight } from 'lucide-react'
 import CrudList from './CrudList'
 import WizardModal from './WizardModal'
@@ -31,7 +32,7 @@ export default function CategoriesTab({ user }) {
       setCategories(catR.data || [])
       setSubcategories(subR.data || [])
       setConcepts(conR.data || [])
-      const { data: txData } = await supabase.from('transactions').select('category_id, subcategory_id, concept_id')
+      const txData = await fetchAllTransactions(user.id, { select: 'category_id, subcategory_id, concept_id' })
       const counts = {}
       ;(txData || []).forEach(t => {
         if (t.category_id) counts[`cat_${t.category_id}`] = (counts[`cat_${t.category_id}`] || 0) + 1
@@ -91,8 +92,10 @@ export default function CategoriesTab({ user }) {
     loadAll()
   }
   const moveSub = async (id, newCatId) => {
-    const { error } = await supabase.from('subcategories').update({ category_id: newCatId }).eq('id', id)
-    if (error) { showCrudError('Error al mover la subcategoría.'); return }
+    const { error: e1 } = await supabase.from('subcategories').update({ category_id: newCatId }).eq('id', id)
+    if (e1) { showCrudError('Error al mover la subcategoría.'); return }
+    const { error: e2 } = await supabase.from('transactions').update({ category_id: newCatId }).eq('subcategory_id', id).eq('user_id', user.id)
+    if (e2) { showCrudError('Error al migrar transacciones de la subcategoría.'); return }
     loadAll()
   }
   const deleteSub = async (id, reassignId) => {
@@ -120,8 +123,12 @@ export default function CategoriesTab({ user }) {
     loadAll()
   }
   const moveCon = async (id, newSubId) => {
-    const { error } = await supabase.from('concepts').update({ subcategory_id: newSubId }).eq('id', id)
-    if (error) { showCrudError('Error al mover el concepto.'); return }
+    const { error: e1 } = await supabase.from('concepts').update({ subcategory_id: newSubId }).eq('id', id)
+    if (e1) { showCrudError('Error al mover el concepto.'); return }
+    const targetSub = subcategories.find(s => s.id === newSubId)
+    const newCatId = targetSub?.category_id
+    const { error: e2 } = await supabase.from('transactions').update({ subcategory_id: newSubId, category_id: newCatId }).eq('concept_id', id).eq('user_id', user.id)
+    if (e2) { showCrudError('Error al migrar transacciones del concepto.'); return }
     loadAll()
   }
   const deleteCon = async (id, reassignId) => {

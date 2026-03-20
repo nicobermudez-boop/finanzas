@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { seedDefaults } from '../lib/defaults'
 
 const AuthContext = createContext({})
 
@@ -17,10 +18,17 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
       if (event === 'PASSWORD_RECOVERY') {
         setIsRecovery(true)
+      }
+      if (event === 'SIGNED_IN' && session?.user) {
+        try {
+          await seedDefaults(session.user.id)
+        } catch (err) {
+          console.error('Error seeding defaults:', err)
+        }
       }
     })
 

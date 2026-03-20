@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAllTransactions } from '../../lib/fetchAll'
 import CrudList from './CrudList'
 
 export default function PersonsTab({ user }) {
@@ -17,7 +18,7 @@ export default function PersonsTab({ user }) {
     try {
       const { data } = await supabase.from('persons').select('*').order('name')
       setPersons(data || [])
-      const { data: txData } = await supabase.from('transactions').select('person_id')
+      const txData = await fetchAllTransactions(user.id, { select: 'person_id' })
       const counts = {}
       ;(txData || []).forEach(t => { if (t.person_id) counts[t.person_id] = (counts[t.person_id] || 0) + 1 })
       setTxCounts(counts)
