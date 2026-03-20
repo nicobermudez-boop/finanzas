@@ -11,15 +11,11 @@ export default function ImportTab({ user }) {
   const [concepts, setConcepts] = useState([])
   const [persons, setPersons] = useState([])
   const [exchangeRates, setExchangeRates] = useState({})
-  const [importing, setImporting] = useState(false)
+  const [, setImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [fileName, setFileName] = useState('')
 
   const EXPECTED_HEADERS = ['Fecha', 'Tipo', 'Monto', 'Moneda', 'Categoria', 'Subcategoria', 'Concepto', 'Descripcion', 'Medio de Pago', 'Cuotas', 'Cuota N', 'Persona', 'Destino', 'Recurrente', 'Monto USD', 'Cotizacion']
-
-  useEffect(() => {
-    loadLookups()
-  }, [])
 
   const loadLookups = async () => {
     const [catR, subR, conR, perR, ratesR] = await Promise.all([
@@ -37,6 +33,8 @@ export default function ImportTab({ user }) {
     ;(ratesR.data || []).forEach(r => { rateMap[r.date] = parseFloat(r.rate) })
     setExchangeRates(rateMap)
   }
+
+  useEffect(() => { loadLookups() }, [])
 
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(l => l.trim())

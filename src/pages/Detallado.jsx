@@ -117,9 +117,9 @@ export default function Detallado() {
     return [...new Set(filtered.map(c => c.name))].sort((a, b) => a.localeCompare(b, 'es'))
   }, [filterCat, filterSubcat, categories, subcategories, concepts])
 
-  // Reset dependent filters
-  useEffect(() => { setFilterSubcat('all'); setFilterConcept('all') }, [filterCat])
-  useEffect(() => { setFilterConcept('all') }, [filterSubcat])
+  // Filter change handlers (reset dependent filters)
+  const handleFilterCat = (v) => { setFilterCat(v); setFilterSubcat('all'); setFilterConcept('all') }
+  const handleFilterSubcat = (v) => { setFilterSubcat(v); setFilterConcept('all') }
 
   // Determine which hierarchy columns are visible (hide filtered ones)
   const showCatCol = filterCat === 'all'
@@ -211,7 +211,7 @@ export default function Detallado() {
     else { setSortCol(col); setSortDir('desc') }
   }
 
-  const SortIcon = ({ col }) => {
+  const renderSortIcon = (col) => {
     if (sortCol !== col) return <ArrowUpDown size={10} style={{ opacity: 0.3 }} />
     return sortDir === 'desc' ? <ArrowDown size={10} /> : <ArrowUp size={10} />
   }
@@ -242,8 +242,8 @@ export default function Detallado() {
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Filter size={15} style={{ color: 'var(--text-muted)' }} />
-          <FilterDropdown label="Categoría" value={filterCat} options={catOptions} onChange={setFilterCat} />
-          <FilterDropdown label="Subcategoría" value={filterSubcat} options={subcatOptions} onChange={setFilterSubcat} />
+          <FilterDropdown label="Categoría" value={filterCat} options={catOptions} onChange={handleFilterCat} />
+          <FilterDropdown label="Subcategoría" value={filterSubcat} options={subcatOptions} onChange={handleFilterSubcat} />
           <FilterDropdown label="Concepto" value={filterConcept} options={conceptOptions} onChange={setFilterConcept} />
           <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>
             {rows.length} filas
@@ -270,30 +270,30 @@ export default function Detallado() {
                 {/* Hierarchy columns - only show unfiltered ones */}
                 {showCatCol && (
                   <th onClick={() => handleSort('catName')} style={stickyTh(0)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Categoría <SortIcon col="catName" /></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Categoría {renderSortIcon("catName")}</div>
                   </th>
                 )}
                 {showSubCol && (
                   <th onClick={() => handleSort('subcatName')} style={{ ...thStyle(), minWidth: 120 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Subcategoría <SortIcon col="subcatName" /></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Subcategoría {renderSortIcon("subcatName")}</div>
                   </th>
                 )}
                 {showConCol && (
                   <th onClick={() => handleSort('conceptName')} style={{ ...thStyle(), minWidth: 120 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Concepto <SortIcon col="conceptName" /></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Concepto {renderSortIcon("conceptName")}</div>
                   </th>
                 )}
                 <th onClick={() => handleSort('desc')} style={{ ...thStyle(), minWidth: 140 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Descripción <SortIcon col="desc" /></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Descripción {renderSortIcon("desc")}</div>
                 </th>
                 {/* Total */}
                 <th onClick={() => handleSort('total')} style={{ ...thStyle('right'), borderLeft: '2px solid var(--border-strong)', minWidth: 100 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>Total <SortIcon col="total" /></div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>Total {renderSortIcon("total")}</div>
                 </th>
                 {/* Month columns */}
                 {monthColumns.map(col => (
                   <th key={col.key} onClick={() => handleSort(col.key)} style={{ ...thStyle('right'), minWidth: 90 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>{col.label} <SortIcon col={col.key} /></div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>{col.label} {renderSortIcon(col.key)}</div>
                   </th>
                 ))}
               </tr>

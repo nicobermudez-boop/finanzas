@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import { usePrivacy } from '../context/PrivacyContext'
@@ -52,7 +51,7 @@ export default function Evolucion() {
   const [excludeViajes, setExcludeViajes] = useState(false)
   const [excludeExtra, setExcludeExtra] = useState(false)
 
-  const nowYear = new Date().getFullYear()
+  const [nowYear] = useState(() => new Date().getFullYear())
   const [baseYear, setBaseYear] = useState(nowYear)
   const compYear = baseYear - 1
 
@@ -71,7 +70,7 @@ export default function Evolucion() {
       setLoading(false)
     }
     fetchData()
-  }, [])
+  }, [nowYear])
 
   // Process data into monthly aggregates
   const { monthlyData, cumulativeData } = useMemo(() => {
@@ -159,7 +158,7 @@ export default function Evolucion() {
     })
 
     return { monthlyData: mData, cumulativeData: cData }
-  }, [transactions, currency, view, excludeViajes, excludeExtra, baseYear, compYear])
+  }, [transactions, currency, view, excludeViajes, excludeExtra, baseYear, compYear, nowYear])
 
   const activeView = VIEWS.find(v => v.key === view)
 

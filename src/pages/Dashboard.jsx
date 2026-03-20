@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import { usePrivacy } from '../context/PrivacyContext'
@@ -46,7 +45,7 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState(null)
   const [currency, setCurrency] = useState('ARS')
   const [period, setPeriod] = useState('ytd')
-  const now0 = new Date()
+  const [now0] = useState(() => new Date())
   const defYear = now0.getMonth() === 0 ? now0.getFullYear() - 1 : now0.getFullYear()
   const defMonth = now0.getMonth() === 0 ? 11 : now0.getMonth() - 1
   const [baseYear, setBaseYear] = useState(defYear)
@@ -183,7 +182,7 @@ export default function Dashboard() {
     const years = new Set(transactions.map(t => new Date(t.date + 'T00:00:00').getFullYear()).filter(y => !isNaN(y)))
     years.add(defYear)
     return [...years].filter(y => y <= now0.getFullYear()).sort()
-  }, [transactions, defYear])
+  }, [transactions, defYear, now0])
 
   const maxMonth = baseYear === now0.getFullYear() ? now0.getMonth() - 1 : 11 // 0-indexed
   const handleYearChange = (y) => {

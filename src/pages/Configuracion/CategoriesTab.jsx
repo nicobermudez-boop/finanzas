@@ -75,7 +75,7 @@ export default function CategoriesTab({ user }) {
       }
       await supabase.from('categories').delete().eq('id', id)
       setSelectedCat(null); setSelectedSub(null); loadAll()
-    } catch (e) { showCrudError('Error al eliminar la categoría.') }
+    } catch { showCrudError('Error al eliminar la categoría.') }
   }
 
   // Subcategory CRUD
@@ -105,7 +105,7 @@ export default function CategoriesTab({ user }) {
       }
       await supabase.from('subcategories').delete().eq('id', id)
       setSelectedSub(null); loadAll()
-    } catch (e) { showCrudError('Error al eliminar la subcategoría.') }
+    } catch { showCrudError('Error al eliminar la subcategoría.') }
   }
 
   // Concept CRUD
@@ -128,7 +128,7 @@ export default function CategoriesTab({ user }) {
     try {
       if (reassignId) await supabase.from('transactions').update({ concept_id: reassignId }).eq('concept_id', id)
       await supabase.from('concepts').delete().eq('id', id); loadAll()
-    } catch (e) { showCrudError('Error al eliminar el concepto.') }
+    } catch { showCrudError('Error al eliminar el concepto.') }
   }
 
   if (loading) return <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>Cargando...</div>

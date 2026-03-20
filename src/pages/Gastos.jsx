@@ -82,7 +82,7 @@ export default function Gastos() {
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState('ARS')
   const [period, setPeriod] = useState('ytd')
-  const now0 = new Date()
+  const [now0] = useState(() => new Date())
   const defYear = now0.getMonth() === 0 ? now0.getFullYear() - 1 : now0.getFullYear()
   const defMonth = now0.getMonth() === 0 ? 11 : now0.getMonth() - 1
   const [baseYear, setBaseYear] = useState(defYear)
@@ -302,13 +302,13 @@ export default function Gastos() {
       kpis: { totalExp, prevTotalExp, yaTotalExp, totalInc, prevTotalInc, yaTotalInc, avgM, pctInc, prevPctInc, yaPctInc },
       barData: bData, distData: dData, tableData: tData, catColors: cCol,
     }
-  }, [transactions, currency, period, baseYear, baseMonthIdx, excludeExtra, excludeViajes, filterCats, filterSubs, filterCons, distGroup, tableGroup, catMap, subMap, conMap, categories, concepts, subcategories])
+  }, [transactions, currency, period, baseYear, baseMonthIdx, excludeExtra, excludeViajes, filterCats, filterSubs, filterCons, distGroup, tableGroup, catMap, subMap, conMap])
 
   const availableYears = useMemo(() => {
     const years = new Set(transactions.map(t => new Date(t.date + 'T00:00:00').getFullYear()).filter(y => !isNaN(y)))
     years.add(defYear)
     return [...years].filter(y => y <= now0.getFullYear()).sort()
-  }, [transactions, defYear])
+  }, [transactions, defYear, now0])
 
   const maxMonth = baseYear === now0.getFullYear() ? now0.getMonth() - 1 : 11
   const handleYearChange = (y) => {
@@ -339,7 +339,7 @@ export default function Gastos() {
   const fBps = (cur, prev) => { if (cur == null || prev == null) return '\u2013'; const d = (cur - prev) * 100; return `${d >= 0 ? '+' : ''}${Math.round(d)}bps` }
 
   const TotalLabel = (props) => {
-    const { x, y, width, value, viewBox } = props
+    const { x, y, width, value } = props
     if (!value || hideNumbers) return null
     const chartTop = 10
     const labelY = y - 6 < chartTop ? y + 14 : y - 6
