@@ -131,8 +131,18 @@ export default function Gastos() {
 
   const availableCons = useMemo(() => {
     if (filterCats.length !== 1 || filterSubs.length !== 1) return []
+    const selectedCat = catMap[filterCats[0]]
+    if (selectedCat?.name === 'Viajes' && String(filterSubs[0]).startsWith('dest_')) {
+      const dest = String(filterSubs[0]).replace('dest_', '')
+      const usedConceptIds = new Set(
+        transactions
+          .filter(t => t.category_id === filterCats[0] && t.destination === dest && t.concept_id)
+          .map(t => t.concept_id)
+      )
+      return concepts.filter(c => usedConceptIds.has(c.id)).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    }
     return concepts.filter(c => c.subcategory_id === filterSubs[0]).sort((a, b) => a.name.localeCompare(b.name, 'es'))
-  }, [filterCats, filterSubs, concepts])
+  }, [filterCats, filterSubs, concepts, transactions, catMap])
 
   const toggleCat = (id) => { setFilterCats(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]); setFilterSubs([]); setFilterCons([]) }
   const toggleSub = (id) => { setFilterSubs(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]); setFilterCons([]) }

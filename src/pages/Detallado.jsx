@@ -107,15 +107,33 @@ export default function Detallado() {
   const conceptOptions = useMemo(() => {
     let filtered = concepts
     if (filterSubcat !== 'all') {
-      const subIds = subcategories.filter(s => s.name === filterSubcat).map(s => s.id)
-      filtered = concepts.filter(c => subIds.includes(c.subcategory_id))
+      if (filterCat === 'Viajes') {
+        const usedConceptIds = new Set(
+          transactions
+            .filter(t => catMap[t.category_id]?.name === 'Viajes' && t.destination === filterSubcat && t.concept_id)
+            .map(t => t.concept_id)
+        )
+        filtered = concepts.filter(c => usedConceptIds.has(c.id))
+      } else {
+        const subIds = subcategories.filter(s => s.name === filterSubcat).map(s => s.id)
+        filtered = concepts.filter(c => subIds.includes(c.subcategory_id))
+      }
     } else if (filterCat !== 'all') {
-      const catIds = categories.filter(c => c.name === filterCat).map(c => c.id)
-      const subIds = subcategories.filter(s => catIds.includes(s.category_id)).map(s => s.id)
-      filtered = concepts.filter(c => subIds.includes(c.subcategory_id))
+      if (filterCat === 'Viajes') {
+        const usedConceptIds = new Set(
+          transactions
+            .filter(t => catMap[t.category_id]?.name === 'Viajes' && t.concept_id)
+            .map(t => t.concept_id)
+        )
+        filtered = concepts.filter(c => usedConceptIds.has(c.id))
+      } else {
+        const catIds = categories.filter(c => c.name === filterCat).map(c => c.id)
+        const subIds = subcategories.filter(s => catIds.includes(s.category_id)).map(s => s.id)
+        filtered = concepts.filter(c => subIds.includes(c.subcategory_id))
+      }
     }
     return [...new Set(filtered.map(c => c.name))].sort((a, b) => a.localeCompare(b, 'es'))
-  }, [filterCat, filterSubcat, categories, subcategories, concepts])
+  }, [filterCat, filterSubcat, categories, subcategories, concepts, transactions, catMap])
 
   // Filter change handlers (reset dependent filters)
   const handleFilterCat = (v) => { setFilterCat(v); setFilterSubcat('all'); setFilterConcept('all') }
