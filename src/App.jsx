@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import React, { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -7,13 +7,29 @@ import Sidebar from './components/Sidebar'
 import useIsMobile from './hooks/useIsMobile'
 import Login from './pages/Login'
 
-const Carga = lazy(() => import('./pages/Carga'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Evolucion = lazy(() => import('./pages/Evolucion'))
-const Gastos = lazy(() => import('./pages/Gastos'))
-const Detallado = lazy(() => import('./pages/Detallado'))
-const Historial = lazy(() => import('./pages/Historial'))
-const Configuracion = lazy(() => import('./pages/Configuracion'))
+function lazyRetry(importFn) {
+  return lazy(() =>
+    importFn().catch((error) => {
+      const isChunkError = /loading chunk|failed to fetch dynamically imported module/i.test(error.message)
+      const hasReloaded = sessionStorage.getItem('chunk_reload')
+      if (isChunkError && !hasReloaded) {
+        sessionStorage.setItem('chunk_reload', '1')
+        window.location.reload()
+        return new Promise(() => {})
+      }
+      sessionStorage.removeItem('chunk_reload')
+      throw error
+    })
+  )
+}
+
+const Carga = lazyRetry(() => import('./pages/Carga'))
+const Dashboard = lazyRetry(() => import('./pages/Dashboard'))
+const Evolucion = lazyRetry(() => import('./pages/Evolucion'))
+const Gastos = lazyRetry(() => import('./pages/Gastos'))
+const Detallado = lazyRetry(() => import('./pages/Detallado'))
+const Historial = lazyRetry(() => import('./pages/Historial'))
+const Configuracion = lazyRetry(() => import('./pages/Configuracion'))
 
 function PageLoader() {
   return (
@@ -27,6 +43,53 @@ function PageLoader() {
       Cargando...
     </div>
   )
+}
+
+class ChunkErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-primary)',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ marginBottom: 12, color: 'var(--text-secondary)' }}>
+              Error al cargar la página.
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 'var(--radius-md)',
+                border: 'none',
+                background: 'var(--color-accent)',
+                color: '#fff',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 14,
+              }}
+            >
+              Recargar
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 function AppLayout() {
@@ -43,18 +106,20 @@ function AppLayout() {
         transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         background: 'var(--bg-primary)',
       }}>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/carga" element={<Carga />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/evolucion" element={<Evolucion />} />
-            <Route path="/gastos" element={<Gastos />} />
-            <Route path="/detallado" element={<Detallado />} />
-            <Route path="/historial" element={<Historial />} />
-            <Route path="/configuracion" element={<Configuracion />} />
-            <Route path="*" element={<Navigate to="/carga" replace />} />
-          </Routes>
-        </Suspense>
+        <ChunkErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/carga" element={<Carga />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/evolucion" element={<Evolucion />} />
+              <Route path="/gastos" element={<Gastos />} />
+              <Route path="/detallado" element={<Detallado />} />
+              <Route path="/historial" element={<Historial />} />
+              <Route path="/configuracion" element={<Configuracion />} />
+              <Route path="*" element={<Navigate to="/carga" replace />} />
+            </Routes>
+          </Suspense>
+        </ChunkErrorBoundary>
       </main>
     </div>
   )
@@ -93,6 +158,10 @@ function AuthGate() {
 }
 
 export default function App() {
+  useEffect(() => {
+    sessionStorage.removeItem('chunk_reload')
+  }, [])
+
   return (
     <BrowserRouter>
       <ThemeProvider>

@@ -28,16 +28,20 @@
     <script type="module" src="/src/main.jsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
-        // Register the self-destructing SW so browsers running the old cached SW
-        // pick up this update, clear caches, and unregister themselves.
-        navigator.serviceWorker.register('/sw.js').catch(function() {});
-        // Also clean up from the page side as a fallback
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) { r.unregister(); });
-        });
-        caches.keys().then(function(names) {
-          names.forEach(function(name) { caches.delete(name); });
-        });
+        navigator.serviceWorker.register('/sw.js')
+          .then(function() {
+            caches.keys().then(function(names) {
+              names.forEach(function(name) { caches.delete(name); });
+            });
+          })
+          .catch(function() {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(r) { r.unregister(); });
+            });
+            caches.keys().then(function(names) {
+              names.forEach(function(name) { caches.delete(name); });
+            });
+          });
       }
     </script>
   </body>
