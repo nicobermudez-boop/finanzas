@@ -1,21 +1,11 @@
-const CACHE_NAME = 'finanzas-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/apple-touch-icon.png'
-];
+const CACHE_NAME = 'finanzas-v2';
 
-// Install: cache core shell
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+// Install: skip waiting immediately so the new SW activates fast
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
-// Activate: clean old caches
+// Activate: clean old caches and take control of all clients
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -24,14 +14,30 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch: cache-first for hashed assets, network-first for everything else
+// Fetch: network-first for navigation/HTML, cache-first for hashed assets, network-first for the rest
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // Skip non-GET and Supabase API calls (always fresh)
+  // Skip non-GET and Supabase API calls
   if (e.request.method !== 'GET' || url.hostname.includes('supabase')) return;
 
-  // Vite-built assets have content hashes and are immutable — serve from cache first
+  // Navigation requests (HTML pages): always network-first, cache as fallback for offline
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Vite-built assets have content hashes — safe to cache-first (immutable)
   if (url.pathname.startsWith('/assets/')) {
     e.respondWith(
       caches.match(e.request).then((cached) => {
@@ -48,11 +54,11 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Everything else: network-first with cache fallback
+  // Everything else: network-first with cache fallback (for offline)
   e.respondWith(
     fetch(e.request)
       .then((res) => {
-        if (res.ok && (url.pathname.match(/\.(js|css|png|svg|woff2?)$/) || url.pathname === '/')) {
+        if (res.ok) {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
         }
