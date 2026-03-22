@@ -51,7 +51,10 @@ export async function getExchangeRate(date) {
 // Fetch current MEP rate from dolarapi.com
 async function fetchMEPFromAPI() {
   try {
-    const res = await fetch('https://dolarapi.com/v1/dolares/bolsa')
+    const controller = new AbortController()
+    const id = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch('https://dolarapi.com/v1/dolares/bolsa', { signal: controller.signal })
+    clearTimeout(id)
     if (!res.ok) throw new Error('API error')
     const data = await res.json()
     // Use average of compra and venta (promedio del día)
