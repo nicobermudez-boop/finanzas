@@ -13,12 +13,34 @@ export function AuthProvider({ children }) {
   const [isRecovery, setIsRecovery] = useState(false)
 
   useEffect(() => {
+    let settled = false
+
+    // Timeout: if getSession hangs (e.g. token refresh stalls), force loading to finish
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true
+        console.warn('Session check timed out — clearing session')
+        supabase.auth.signOut().catch(() => {})
+        setUser(null)
+        setLoading(false)
+      }
+    }, 5000)
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
+      if (!settled) {
+        settled = true
+        clearTimeout(timeout)
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
     }).catch((err) => {
-      console.error('Error getting session:', err)
-      setLoading(false)
+      if (!settled) {
+        settled = true
+        clearTimeout(timeout)
+        console.error('Error getting session:', err)
+        setUser(null)
+        setLoading(false)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -35,7 +57,10 @@ export function AuthProvider({ children }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signIn = useCallback(async (email, password) => {
