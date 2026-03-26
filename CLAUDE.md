@@ -87,7 +87,8 @@ finanzas/
     │   ├── exchangeRate.js     # MEP rate fetching with DB cache (dolarapi.com)
     │   ├── fetchAll.js         # Paginated Supabase fetcher (bypasses 1000-row limit)
     │   ├── format.js           # Centralized currency formatting utilities
-    │   └── currency.js         # getAmount() — ARS↔USD conversion for display
+    │   ├── currency.js         # getAmount() — ARS↔USD conversion for display
+    │   └── defaults.js         # seedDefaults() — seeds categories/persons for new users
     ├── components/
     │   ├── Sidebar.jsx             # Navigation sidebar with theme toggle & mobile support
     │   ├── CurrencyToggle.jsx      # ARS / USD switcher button pair
@@ -142,7 +143,7 @@ All unmatched routes (`*`) redirect to `/carga`. Pages are loaded with `React.la
 
 No Redux or Zustand. Three Context providers in `src/context/`:
 
-- **AuthContext** — Wraps Supabase Auth. Provides `user`, `loading`, `isRecovery`, `setIsRecovery`, `signIn`, `signUp`, `signOut`, `resetPassword`. Listens to `onAuthStateChange`.
+- **AuthContext** — Wraps Supabase Auth. Provides `user`, `loading`, `isRecovery`, `setIsRecovery`, `signIn`, `signUp`, `signOut`. Listens to `onAuthStateChange`. On `SIGNED_IN`, calls `seedDefaults(userId)` to set up default categories/persons for new users. `getSession()` has a 5-second timeout — if it hangs (e.g. stalled token refresh), the session is cleared and loading resolves.
 - **ThemeContext** — Manages `auto` / `light` / `dark` mode. Reads OS preference via `matchMedia`. Persists to `localStorage`. Applies `data-theme` attribute on `<html>`. Exposes `cycleTheme()` (auto → light → dark → auto).
 - **PrivacyContext** — Manages `hideNumbers` boolean for privacy mode. Persists to `localStorage` (`'hide-numbers'` key). Exposes `toggleHideNumbers()`. Use `usePrivacy()` hook.
 
@@ -191,6 +192,13 @@ const data = await fetchAllTransactions(user.id, {
   1. Checks DB cache for most recent rate ≤ date
   2. Falls back to `dolarapi.com` API if needed
   3. Returns average of (compra + venta)
+
+### New User Onboarding
+
+`seedDefaults(userId)` in `src/lib/defaults.js` is called automatically on `SIGNED_IN` (from AuthContext). It is idempotent — skips if the user already has any categories. It inserts:
+- 10 default expense categories (Transporte, Viajes, Vivienda, Regalos, Hogar, Indumentaria, Salud, Esparcimiento, Educación, Compras) with their subcategories and common concepts
+- 1 default income category (Ingresos) with concepts
+- 2 default persons: "Personal" and "Empresa"
 
 ### Transaction Creation
 
@@ -357,6 +365,21 @@ import { getAmount } from '../lib/currency'
 const displayAmount = getAmount(transaction, 'USD')  // handles ARS↔USD via exchange_rate
 ```
 
+### Avoiding N+1 Queries in Configuracion
+
+The Configuracion tabs (CategoriesTab, PersonsTab, RatesTab, ImportTab) load all related data in **batch queries**, not per-item queries. When displaying a list of items with child counts or related data, fetch all children in one query and join in JavaScript:
+
+```js
+// Good: one query for all subcategories
+const { data: allSubs } = await supabase.from('subcategories').select('*').eq('user_id', user.id)
+const subsForCat = allSubs.filter(s => s.category_id === cat.id)
+
+// Bad: one query per category (N+1)
+for (const cat of categories) {
+  const { data } = await supabase.from('subcategories').select('*').eq('category_id', cat.id)
+}
+```
+
 ### Category Hierarchy
 
 Categories have three levels:
@@ -384,7 +407,7 @@ Run: `npm run lint`
 ## PWA Details
 
 - **manifest.json** in `/public` — standalone display, dark theme color `#111827`
-- **sw.js** in `/public` — registered in `index.html` for offline support
+- **sw.js** in `/public` — self-destructing service worker: on activation it deletes all caches and unregisters itself. This replaced the old caching SW to fix stale-cache issues on Android. The app does **not** cache assets for offline use.
 - **iOS support** — apple-touch-icon.png, `apple-mobile-web-app-capable` meta tags
 - Icons provided in 8 sizes (72×72 to 512×512) in `/public/icons/`
 
@@ -423,6 +446,7 @@ Deployed on **Vercel** (project ID: `prj_UvoAlZ9tBRL2TIUSPIyS2naZAdsX`).
 | `src/lib/exchangeRate.js` | Use `getExchangeRate(date)` to get MEP rate |
 | `src/lib/format.js` | Use `fmt()`, `fmtSmart()`, `fmtForm()`, etc. — never define local formatters |
 | `src/lib/currency.js` | Use `getAmount(tx, currency)` to resolve display amount |
+| `src/lib/defaults.js` | Use `seedDefaults(userId)` to initialize a new user's data |
 | `src/context/AuthContext.jsx` | Use `useAuth()` hook for user session |
 | `src/context/ThemeContext.jsx` | Use `useTheme()` hook for current theme |
 | `src/context/PrivacyContext.jsx` | Use `usePrivacy()` hook for hide-numbers mode |
