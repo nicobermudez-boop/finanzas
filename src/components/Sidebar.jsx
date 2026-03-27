@@ -10,8 +10,6 @@ import {
   Table2,
   LogOut,
   ChevronLeft,
-  Menu,
-  X,
   Sun,
   Moon,
   Monitor,
@@ -54,13 +52,6 @@ const themeConfig = {
 }
 
 const styles = {
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.5)',
-    zIndex: 40,
-    backdropFilter: 'blur(4px)',
-  },
   sidebar: (collapsed) => ({
     position: 'fixed',
     left: 0,
@@ -145,29 +136,10 @@ const styles = {
     fontFamily: 'inherit',
     transition: 'all 0.15s ease',
   }),
-  mobileToggle: {
-    position: 'fixed',
-    top: 12,
-    left: 12,
-    zIndex: 60,
-    width: 36,
-    height: 36,
-    borderRadius: 'var(--radius-sm)',
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-subtle)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: 'var(--text-muted)',
-    boxShadow: 'var(--shadow-sm)',
-    opacity: 0.85,
-  }
 }
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
   const isMobile = useIsMobile()
   const location = useLocation()
   const navigate = useNavigate()
@@ -175,23 +147,18 @@ export default function Sidebar() {
   const { mode, cycleTheme } = useTheme()
   const { hideNumbers, toggleHideNumbers } = usePrivacy()
 
-  const isCollapsed = collapsed && !isMobile
+  if (isMobile) return null
+
+  const isCollapsed = collapsed
 
   const handleNav = (path) => {
     navigate(path)
-    if (isMobile) setMobileOpen(false)
   }
 
   const ThemeIcon = themeConfig[mode].icon
 
   const sidebarContent = (
-    <div style={{
-      ...styles.sidebar(isCollapsed),
-      ...(isMobile ? {
-        transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
-        width: 'var(--sidebar-width)',
-      } : {})
-    }}>
+    <div style={styles.sidebar(isCollapsed)}>
       <div style={styles.logo}>
         <div style={styles.logoIcon}>💰</div>
         {!isCollapsed && (
@@ -307,17 +274,5 @@ export default function Sidebar() {
     </div>
   )
 
-  return (
-    <>
-      {isMobile && (
-        <button style={styles.mobileToggle} onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      )}
-      {isMobile && mobileOpen && (
-        <div style={styles.overlay} onClick={() => setMobileOpen(false)} />
-      )}
-      {sidebarContent}
-    </>
-  )
+  return sidebarContent
 }

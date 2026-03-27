@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { PrivacyProvider } from './context/PrivacyContext'
 import Sidebar from './components/Sidebar'
+import BottomNav from './components/BottomNav'
 import useIsMobile from './hooks/useIsMobile'
 import Login from './pages/Login'
 
@@ -30,6 +31,9 @@ const Gastos = lazyRetry(() => import('./pages/Gastos'))
 const Detallado = lazyRetry(() => import('./pages/Detallado'))
 const Historial = lazyRetry(() => import('./pages/Historial'))
 const Configuracion = lazyRetry(() => import('./pages/Configuracion'))
+const AnalyticsHub = lazyRetry(() => import('./pages/AnalyticsHub'))
+const HistorialHub = lazyRetry(() => import('./pages/HistorialHub'))
+const Pendientes = lazyRetry(() => import('./pages/Pendientes'))
 
 function PageLoader() {
   return (
@@ -105,22 +109,39 @@ function AppLayout() {
         overflow: 'hidden',
         transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         background: 'var(--bg-primary)',
+        paddingBottom: isMobile ? 64 : 0,
+        boxSizing: 'border-box',
       }}>
         <ChunkErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/carga" element={<Carga />} />
+              {/* Desktop routes (sidebar) */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/evolucion" element={<Evolucion />} />
               <Route path="/gastos" element={<Gastos />} />
               <Route path="/detallado" element={<Detallado />} />
               <Route path="/historial" element={<Historial />} />
               <Route path="/configuracion" element={<Configuracion />} />
+              {/* Mobile hub routes (bottom nav) */}
+              <Route path="/analytics" element={<AnalyticsHub />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="evolucion" element={<Evolucion />} />
+                <Route path="gastos" element={<Gastos />} />
+              </Route>
+              <Route path="/transacciones" element={<HistorialHub />}>
+                <Route index element={<Navigate to="historial" replace />} />
+                <Route path="historial" element={<Historial />} />
+                <Route path="detallado" element={<Detallado />} />
+              </Route>
+              <Route path="/pendientes" element={<Pendientes />} />
               <Route path="*" element={<Navigate to="/carga" replace />} />
             </Routes>
           </Suspense>
         </ChunkErrorBoundary>
       </main>
+      {isMobile && <BottomNav />}
     </div>
   )
 }
