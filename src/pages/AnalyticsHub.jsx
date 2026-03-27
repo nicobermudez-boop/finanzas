@@ -1,9 +1,10 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { LayoutDashboard, TrendingUp, Search } from 'lucide-react'
 
 const tabs = [
-  { path: '/analytics/dashboard', label: 'Dashboard' },
-  { path: '/analytics/evolucion', label: 'Evolución' },
-  { path: '/analytics/gastos', label: 'Gastos' },
+  { path: '/analytics/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/analytics/evolucion', label: 'Evolución', icon: TrendingUp },
+  { path: '/analytics/gastos', label: 'Gastos', icon: Search },
 ]
 
 export default function AnalyticsHub() {
@@ -20,11 +21,15 @@ export default function AnalyticsHub() {
       }}>
         {tabs.map((tab) => {
           const active = location.pathname === tab.path
+          const Icon = tab.icon
           return (
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
                 padding: '12px 20px',
                 border: 'none',
                 borderBottom: active ? '2px solid var(--color-accent)' : '2px solid transparent',
@@ -38,6 +43,7 @@ export default function AnalyticsHub() {
                 marginBottom: -1,
               }}
             >
+              <Icon size={16} />
               {tab.label}
             </button>
           )

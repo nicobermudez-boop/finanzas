@@ -180,7 +180,6 @@ export default function Evolucion() {
         flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>Evolución</h1>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <select value={baseYear} onChange={e => setBaseYear(Number(e.target.value))} style={{
               padding: '6px 28px 6px 10px', background: 'var(--bg-tertiary)',

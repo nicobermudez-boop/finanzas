@@ -252,7 +252,6 @@ export default function Detallado() {
       {/* Header */}
       <div className="page-header" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>Detallado de Gastos</h1>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <MonthRangeSelector value={monthRange} onChange={setMonthRange} />
             <CurrencyToggle currency={currency} onChange={setCurrency} />
