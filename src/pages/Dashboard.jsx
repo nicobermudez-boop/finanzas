@@ -184,10 +184,10 @@ export default function Dashboard() {
     return [...years].filter(y => y <= now0.getFullYear()).sort()
   }, [transactions, defYear, now0])
 
-  const maxMonth = baseYear === now0.getFullYear() ? now0.getMonth() - 1 : 11 // 0-indexed
+  const maxMonth = baseYear === now0.getFullYear() ? now0.getMonth() : 11 // 0-indexed, includes current month
   const handleYearChange = (y) => {
     setBaseYear(y)
-    const max = y === now0.getFullYear() ? now0.getMonth() - 1 : 11
+    const max = y === now0.getFullYear() ? now0.getMonth() : 11
     if (baseMonthIdx > max) setBaseMonthIdx(max)
   }
 

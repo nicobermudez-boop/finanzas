@@ -17,18 +17,38 @@ export function fmt(value, currency) {
 
 export function fmtCompact(value, currency) {
   if (value == null || isNaN(value)) return '\u2013'
-  return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'es-AR', {
-    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0, notation: 'compact',
+  const abs = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+  const isUSD = currency === 'USD'
+  const prefix = isUSD ? 'US$' : '$'
+  const locale = isUSD ? 'en-US' : 'es-AR'
+
+  if (abs >= 1_000_000) {
+    const n = abs / 1_000_000
+    return `${sign}${prefix}\u00A0${n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`
+  }
+  if (abs >= 1_000) {
+    const n = abs / 1_000
+    if (isUSD) return `${sign}${prefix}\u00A0${n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k`
+    return `${sign}${prefix}\u00A0${Math.round(n).toLocaleString(locale)}k`
+  }
+  return new Intl.NumberFormat(locale, {
+    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(value)
 }
 
-export function fmtLabel(value) {
+export function fmtLabel(value, currency) {
   if (!value) return ''
   const abs = Math.abs(value)
   const sign = value < 0 ? '-' : ''
-  if (abs >= 1000000) return `${sign}$${(abs / 1000000).toFixed(1)}M`
-  if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}k`
-  return `${sign}$${Math.round(abs)}`
+  const isUSD = currency === 'USD'
+  const prefix = isUSD ? 'US$' : '$'
+  if (abs >= 1_000_000) return `${sign}${prefix}${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) {
+    if (isUSD) return `${sign}${prefix}${(abs / 1_000).toFixed(1)}k`
+    return `${sign}${prefix}${Math.round(abs / 1_000)}k`
+  }
+  return `${sign}${prefix}${Math.round(abs)}`
 }
 
 export function fmtSmart(value, currency) {
