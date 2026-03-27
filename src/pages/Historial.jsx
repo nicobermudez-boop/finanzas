@@ -84,7 +84,7 @@ export default function Historial() {
     })
     if (cf.concept) data = data.filter(t => {
       const name = conMap[t.concept_id]?.name || ''
-      return name.toLowerCase().includes(cf.concept.toLowerCase())
+      return name === cf.concept
     })
     if (cf.description) data = data.filter(t => (t.description || '').toLowerCase().includes(cf.description.toLowerCase()))
     if (cf.person) data = data.filter(t => (t.person || '') === cf.person)
@@ -111,10 +111,10 @@ export default function Historial() {
       let d = data
       if (exclude !== 'category' && cf.category) d = d.filter(t => (catMap[t.category_id]?.name || t.income_concept || '') === cf.category)
       if (exclude !== 'subcategory' && cf.subcategory) d = d.filter(t => (subMap[t.subcategory_id]?.name || t.income_subtype || '') === cf.subcategory)
+      if (exclude !== 'concept' && cf.concept) d = d.filter(t => (conMap[t.concept_id]?.name || '') === cf.concept)
       if (exclude !== 'person' && cf.person) d = d.filter(t => (t.person || '') === cf.person)
       if (cf.date) d = d.filter(t => (t.date || '').includes(cf.date))
       if (cf.amount) d = d.filter(t => String(t.amount || '').includes(cf.amount))
-      if (cf.concept) d = d.filter(t => (conMap[t.concept_id]?.name || '').toLowerCase().includes(cf.concept.toLowerCase()))
       if (cf.description) d = d.filter(t => (t.description || '').toLowerCase().includes(cf.description.toLowerCase()))
       if (cf.fxRate) d = d.filter(t => String(t.exchange_rate || '').includes(cf.fxRate))
       return d
@@ -122,12 +122,14 @@ export default function Historial() {
 
     const catsData = applyOtherFilters('category')
     const subsData = applyOtherFilters('subcategory')
+    const consData = applyOtherFilters('concept')
     const persData = applyOtherFilters('person')
 
     const cats = [...new Set(catsData.map(t => catMap[t.category_id]?.name || t.income_concept || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     const subs = [...new Set(subsData.map(t => subMap[t.subcategory_id]?.name || t.income_subtype || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const cons = [...new Set(consData.map(t => conMap[t.concept_id]?.name || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     const pers = [...new Set(persData.map(t => t.person).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
-    return { cats, subs, pers }
+    return { cats, subs, cons, pers }
   }, [transactions, tab, colFilters, catMap, subMap, conMap])
 
   // Edit handlers
@@ -379,7 +381,10 @@ export default function Historial() {
                   </select>
                 </td>
                 <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <input type="text" value={colFilters.concept} onChange={e => setFilter('concept', e.target.value)} placeholder="Buscar..." style={s.filterInput} />
+                  <select value={colFilters.concept} onChange={e => setFilter('concept', e.target.value)} style={s.filterSelect}>
+                    <option value="">Todos</option>
+                    {uniqueVals.cons.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </td>
                 <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
                   <input type="text" value={colFilters.description} onChange={e => setFilter('description', e.target.value)} placeholder="Buscar..." style={s.filterInput} />

@@ -320,10 +320,10 @@ export default function Gastos() {
     return [...years].filter(y => y <= now0.getFullYear()).sort()
   }, [transactions, defYear, now0])
 
-  const maxMonth = baseYear === now0.getFullYear() ? now0.getMonth() - 1 : 11
+  const maxMonth = baseYear === now0.getFullYear() ? now0.getMonth() : 11
   const handleYearChange = (y) => {
     setBaseYear(y)
-    const max = y === now0.getFullYear() ? now0.getMonth() - 1 : 11
+    const max = y === now0.getFullYear() ? now0.getMonth() : 11
     if (baseMonthIdx > max) setBaseMonthIdx(max)
   }
 

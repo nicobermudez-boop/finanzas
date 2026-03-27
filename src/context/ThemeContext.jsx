@@ -11,10 +11,10 @@ export const useTheme = () => useContext(ThemeContext)
 export function ThemeProvider({ children }) {
   const [mode, setMode] = useState(() => {
     if (typeof window === 'undefined') return 'auto'
-    return localStorage.getItem('theme-mode') || 'auto'
+    return localStorage.getItem('theme-mode') || 'light'
   })
 
-  const [resolved, setResolved] = useState('dark')
+  const [resolved, setResolved] = useState('light')
 
   // Resolve actual theme from mode + OS preference
   useEffect(() => {
