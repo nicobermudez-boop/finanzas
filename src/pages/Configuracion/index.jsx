@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { TrendingUp, Tag, Users, Upload, User } from 'lucide-react'
+import { useMobileHeader } from '../../context/MobileHeaderContext'
+import useIsMobile from '../../hooks/useIsMobile'
 import RatesTab from './RatesTab'
 import CategoriesTab from './CategoriesTab'
 import PersonsTab from './PersonsTab'
@@ -18,15 +20,24 @@ const TABS = [
 export default function Configuracion() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('categories')
+  const isMobile = useIsMobile()
+  const { hidden } = useMobileHeader()
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: isMobile ? 'auto' : '100%', display: 'flex', flexDirection: 'column', overflow: isMobile ? 'visible' : 'hidden' }}>
       <div style={{
         display: 'flex',
         borderBottom: '1px solid var(--border-subtle)',
         background: 'var(--bg-secondary)',
         flexShrink: 0,
         overflowX: 'auto',
+        ...(isMobile ? {
+          position: 'sticky',
+          top: 44,
+          zIndex: 55,
+          transform: hidden ? 'translateY(-44px)' : 'translateY(0)',
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        } : {}),
       }}>
         {TABS.map(t => {
           const active = activeTab === t.key
@@ -59,7 +70,7 @@ export default function Configuracion() {
           )
         })}
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+      <div style={{ flex: isMobile ? 'none' : 1, overflow: isMobile ? 'visible' : 'auto', padding: '24px' }}>
         {activeTab === 'rates' && <RatesTab />}
         {activeTab === 'categories' && <CategoriesTab user={user} />}
         {activeTab === 'persons' && <PersonsTab user={user} />}

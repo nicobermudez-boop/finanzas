@@ -174,7 +174,7 @@ export default function Evolucion() {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: isMobile ? 'auto' : '100%', display: 'flex', flexDirection: 'column', overflow: isMobile ? 'visible' : 'hidden' }}>
       {/* Header */}
       <div className="page-header" style={{
         padding: isMobile ? '12px 16px 10px' : '20px 24px 16px',
@@ -291,7 +291,7 @@ export default function Evolucion() {
       </div>
 
       {/* Charts */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+      <div style={{ flex: isMobile ? 'none' : 1, overflow: isMobile ? 'visible' : 'auto', padding: '20px 24px' }}>
         {/* Monthly bar chart */}
         <div style={{ marginBottom: 32 }}>
           <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 16 }}>

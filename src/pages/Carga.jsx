@@ -7,6 +7,7 @@ import SelectionPills from '../components/SelectionPills'
 import CategoryGrid from '../components/CategoryGrid'
 import RecentTransactions from '../components/RecentTransactions'
 import { fmtForm as fmt, fmtInput } from '../lib/format'
+import useIsMobile from '../hooks/useIsMobile'
 
 const INCOME_CONCEPTS = [
   { name: 'Sueldo', icon: '💰', defaultSubtype: 'recurrente' },
@@ -29,6 +30,7 @@ const FREQS = [
 
 export default function Carga() {
   const { user } = useAuth()
+  const isMobile = useIsMobile()
   // Data from Supabase
   const [categories, setCategories] = useState([])
   const [members, setMembers] = useState([])
@@ -321,7 +323,7 @@ export default function Carga() {
   return (
     <div className="app">
       {/* HEADER */}
-      <div className="hdr">
+      <div className="hdr" style={isMobile ? { top: 44 } : undefined}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           {mepRate && <div className="mep">MEP <b>${Math.round(mepRate).toLocaleString('es-AR')}</b></div>}
           {(amount || catId || incCon || person) && (

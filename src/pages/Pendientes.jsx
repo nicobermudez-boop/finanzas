@@ -1,9 +1,13 @@
 import { BookOpen } from 'lucide-react'
+import useIsMobile from '../hooks/useIsMobile'
 
 export default function Pendientes() {
+  const isMobile = useIsMobile()
+
   return (
     <div style={{
-      height: '100%',
+      height: isMobile ? 'auto' : '100%',
+      minHeight: isMobile ? '60vh' : undefined,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

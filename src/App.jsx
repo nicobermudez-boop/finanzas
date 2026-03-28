@@ -1,11 +1,14 @@
-import React, { lazy, Suspense, useEffect } from 'react'
+import React, { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { PrivacyProvider } from './context/PrivacyContext'
+import { MobileHeaderContext } from './context/MobileHeaderContext'
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
+import MobileTopBar from './components/MobileTopBar'
 import useIsMobile from './hooks/useIsMobile'
+import useScrollDirection from './hooks/useScrollDirection'
 import Login from './pages/Login'
 
 function lazyRetry(importFn) {
@@ -98,51 +101,56 @@ class ChunkErrorBoundary extends React.Component {
 
 function AppLayout() {
   const isMobile = useIsMobile()
+  const mainRef = useRef(null)
+  const hidden = useScrollDirection(isMobile ? mainRef : { current: null })
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar />
-      <main style={{
-        flex: 1,
-        marginLeft: isMobile ? 0 : 'var(--sidebar-width)',
-        height: '100vh',
-        overflow: 'hidden',
-        transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-        background: 'var(--bg-primary)',
-        paddingBottom: isMobile ? 64 : 0,
-        boxSizing: 'border-box',
-      }}>
-        <ChunkErrorBoundary>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/carga" element={<Carga />} />
-              {/* Desktop routes (sidebar) */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/evolucion" element={<Evolucion />} />
-              <Route path="/gastos" element={<Gastos />} />
-              <Route path="/detallado" element={<Detallado />} />
-              <Route path="/historial" element={<Historial />} />
-              <Route path="/configuracion" element={<Configuracion />} />
-              {/* Mobile hub routes (bottom nav) */}
-              <Route path="/analytics" element={<AnalyticsHub />}>
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="evolucion" element={<Evolucion />} />
-                <Route path="gastos" element={<Gastos />} />
-              </Route>
-              <Route path="/transacciones" element={<HistorialHub />}>
-                <Route index element={<Navigate to="historial" replace />} />
-                <Route path="historial" element={<Historial />} />
-                <Route path="detallado" element={<Detallado />} />
-              </Route>
-              <Route path="/pendientes" element={<Pendientes />} />
-              <Route path="*" element={<Navigate to="/carga" replace />} />
-            </Routes>
-          </Suspense>
-        </ChunkErrorBoundary>
-      </main>
-      {isMobile && <BottomNav />}
-    </div>
+    <MobileHeaderContext.Provider value={{ hidden }}>
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+        <Sidebar />
+        <main ref={mainRef} style={{
+          flex: 1,
+          marginLeft: isMobile ? 0 : 'var(--sidebar-width)',
+          height: '100vh',
+          overflow: isMobile ? 'auto' : 'hidden',
+          transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          background: 'var(--bg-primary)',
+          paddingBottom: isMobile ? 64 : 0,
+          boxSizing: 'border-box',
+        }}>
+          {isMobile && <MobileTopBar hidden={hidden} />}
+          <ChunkErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/carga" element={<Carga />} />
+                {/* Desktop routes (sidebar) */}
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/evolucion" element={<Evolucion />} />
+                <Route path="/gastos" element={<Gastos />} />
+                <Route path="/detallado" element={<Detallado />} />
+                <Route path="/historial" element={<Historial />} />
+                <Route path="/configuracion" element={<Configuracion />} />
+                {/* Mobile hub routes (bottom nav) */}
+                <Route path="/analytics" element={<AnalyticsHub />}>
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="evolucion" element={<Evolucion />} />
+                  <Route path="gastos" element={<Gastos />} />
+                </Route>
+                <Route path="/transacciones" element={<HistorialHub />}>
+                  <Route index element={<Navigate to="historial" replace />} />
+                  <Route path="historial" element={<Historial />} />
+                  <Route path="detallado" element={<Detallado />} />
+                </Route>
+                <Route path="/pendientes" element={<Pendientes />} />
+                <Route path="*" element={<Navigate to="/carga" replace />} />
+              </Routes>
+            </Suspense>
+          </ChunkErrorBoundary>
+        </main>
+        {isMobile && <BottomNav />}
+      </div>
+    </MobileHeaderContext.Provider>
   )
 }
 

@@ -1,5 +1,6 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { ClipboardList, Table2 } from 'lucide-react'
+import { useMobileHeader } from '../context/MobileHeaderContext'
 
 const tabs = [
   { path: '/transacciones/historial', label: 'Historial', icon: ClipboardList },
@@ -9,14 +10,20 @@ const tabs = [
 export default function HistorialHub() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { hidden } = useMobileHeader()
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{
         display: 'flex',
         borderBottom: '1px solid var(--border-subtle)',
         background: 'var(--bg-secondary)',
         flexShrink: 0,
+        position: 'sticky',
+        top: 44,
+        zIndex: 55,
+        transform: hidden ? 'translateY(-44px)' : 'translateY(0)',
+        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}>
         {tabs.map((tab) => {
           const active = location.pathname === tab.path
@@ -48,7 +55,7 @@ export default function HistorialHub() {
           )
         })}
       </div>
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div>
         <Outlet />
       </div>
     </div>
