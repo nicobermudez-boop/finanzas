@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import { usePrivacy } from '../context/PrivacyContext'
+import useIsMobile from '../hooks/useIsMobile'
 import {
   XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Line
@@ -40,6 +41,7 @@ function CustomTooltip({ active, payload, label, currency, hideNumbers }) {
 export default function Dashboard() {
   const { hideNumbers } = usePrivacy()
   const H = (s) => hideNumbers ? '••••••' : s
+  const isMobile = useIsMobile()
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -222,50 +224,96 @@ export default function Dashboard() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div className="page-header" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <CurrencyToggle currency={currency} onChange={setCurrency} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 3, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)' }}>
-            {PERIODS.map(p => (
-              <button key={p.key} onClick={() => setPeriod(p.key)} style={{
-                padding: '5px 12px', borderRadius: 'var(--radius-sm)', border: 'none',
-                background: period === p.key ? 'var(--color-accent)' : 'transparent',
-                color: period === p.key ? '#fff' : 'var(--text-muted)',
-                fontSize: 12, fontWeight: period === p.key ? 600 : 400,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}>{p.label}</button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-
-            <select value={baseYear} onChange={e => handleYearChange(Number(e.target.value))} style={selectStyle}>
-              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select value={baseMonthIdx} onChange={e => setBaseMonthIdx(Number(e.target.value))} style={selectStyle}>
-              {MONTHS_SHORT.map((m, i) => i <= maxMonth || baseYear < now0.getFullYear() ? <option key={i} value={i}>{m}</option> : null)}
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setExcludeViajes(!excludeViajes)} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
-              cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid',
-              ...(excludeViajes
-                ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
-                : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
-            }}>✈️ Viajes</button>
-            <button onClick={() => setExcludeExtra(!excludeExtra)} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
-              cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid',
-              ...(excludeExtra
-                ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
-                : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
-            }}>💰 Extraordinarios</button>
-          </div>
-        </div>
+      <div className="page-header" style={{ padding: isMobile ? '12px 16px 10px' : '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+        {isMobile ? (
+          <>
+            {/* Mobile row 1: periods + currency toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 3, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)', flex: 1 }}>
+                {PERIODS.map(p => (
+                  <button key={p.key} onClick={() => setPeriod(p.key)} style={{
+                    flex: 1, padding: '5px 4px', borderRadius: 'var(--radius-sm)', border: 'none',
+                    background: period === p.key ? 'var(--color-accent)' : 'transparent',
+                    color: period === p.key ? '#fff' : 'var(--text-muted)',
+                    fontSize: 11, fontWeight: period === p.key ? 600 : 400,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>{p.label}</button>
+                ))}
+              </div>
+              <CurrencyToggle currency={currency} onChange={setCurrency} />
+            </div>
+            {/* Mobile row 2: year + month + filter chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+              <select value={baseYear} onChange={e => handleYearChange(Number(e.target.value))} style={selectStyle}>
+                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <select value={baseMonthIdx} onChange={e => setBaseMonthIdx(Number(e.target.value))} style={selectStyle}>
+                {MONTHS_SHORT.map((m, i) => i <= maxMonth || baseYear < now0.getFullYear() ? <option key={i} value={i}>{m}</option> : null)}
+              </select>
+              <button onClick={() => setExcludeViajes(!excludeViajes)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid', whiteSpace: 'nowrap',
+                ...(excludeViajes
+                  ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
+                  : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+              }}>✈️ Viajes</button>
+              <button onClick={() => setExcludeExtra(!excludeExtra)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid', whiteSpace: 'nowrap',
+                ...(excludeExtra
+                  ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
+                  : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+              }}>💰 Extras</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+              <CurrencyToggle currency={currency} onChange={setCurrency} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 3, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)' }}>
+                {PERIODS.map(p => (
+                  <button key={p.key} onClick={() => setPeriod(p.key)} style={{
+                    padding: '5px 12px', borderRadius: 'var(--radius-sm)', border: 'none',
+                    background: period === p.key ? 'var(--color-accent)' : 'transparent',
+                    color: period === p.key ? '#fff' : 'var(--text-muted)',
+                    fontSize: 12, fontWeight: period === p.key ? 600 : 400,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>{p.label}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <select value={baseYear} onChange={e => handleYearChange(Number(e.target.value))} style={selectStyle}>
+                  {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select value={baseMonthIdx} onChange={e => setBaseMonthIdx(Number(e.target.value))} style={selectStyle}>
+                  {MONTHS_SHORT.map((m, i) => i <= maxMonth || baseYear < now0.getFullYear() ? <option key={i} value={i}>{m}</option> : null)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setExcludeViajes(!excludeViajes)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid',
+                  ...(excludeViajes
+                    ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
+                    : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+                }}>✈️ Viajes</button>
+                <button onClick={() => setExcludeExtra(!excludeExtra)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid',
+                  ...(excludeExtra
+                    ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
+                    : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+                }}>💰 Extraordinarios</button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>

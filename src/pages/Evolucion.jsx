@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import { usePrivacy } from '../context/PrivacyContext'
+import useIsMobile from '../hooks/useIsMobile'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer
@@ -44,6 +45,7 @@ function CustomTooltip({ active, payload, label, currency, hideNumbers }) {
 
 export default function Evolucion() {
   const { hideNumbers } = usePrivacy()
+  const isMobile = useIsMobile()
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState('ARS')
@@ -175,94 +177,117 @@ export default function Evolucion() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div className="page-header" style={{
-        padding: '20px 24px 16px',
+        padding: isMobile ? '12px 16px 10px' : '20px 24px 16px',
         borderBottom: '1px solid var(--border-subtle)',
         flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <select value={baseYear} onChange={e => setBaseYear(Number(e.target.value))} style={{
-              padding: '6px 28px 6px 10px', background: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)', fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 600, cursor: 'pointer', outline: 'none', appearance: 'none',
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
-            }}>
-              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <CurrencyToggle currency={currency} onChange={setCurrency} />
-          </div>
-        </div>
-
-        {/* View toggle + filter chips */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          {/* View buttons */}
-          <div style={{
-            display: 'flex', gap: 4,
-            background: 'var(--bg-tertiary)',
-            borderRadius: 'var(--radius-md)',
-            padding: 3,
-            border: '1px solid var(--border-subtle)',
-          }}>
-            {VIEWS.map(v => (
-              <button
-                key={v.key}
-                onClick={() => setView(v.key)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  background: view === v.key ? v.color : 'transparent',
-                  color: view === v.key ? '#fff' : 'var(--text-muted)',
-                  fontSize: 12,
-                  fontWeight: view === v.key ? 600 : 400,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Filter chips */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setExcludeViajes(!excludeViajes)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 14px', borderRadius: 20,
-                fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                transition: 'all 0.15s ease', fontFamily: 'inherit',
-                border: '1px solid',
+        {isMobile ? (
+          <>
+            {/* Mobile row 1: view toggle + currency */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 4, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)', flex: 1 }}>
+                {VIEWS.map(v => (
+                  <button key={v.key} onClick={() => setView(v.key)} style={{
+                    flex: 1, padding: '5px 4px', borderRadius: 'var(--radius-sm)', border: 'none',
+                    background: view === v.key ? v.color : 'transparent',
+                    color: view === v.key ? '#fff' : 'var(--text-muted)',
+                    fontSize: 11, fontWeight: view === v.key ? 600 : 400,
+                    cursor: 'pointer', transition: 'all 0.15s ease', fontFamily: 'inherit',
+                  }}>{v.label}</button>
+                ))}
+              </div>
+              <CurrencyToggle currency={currency} onChange={setCurrency} />
+            </div>
+            {/* Mobile row 2: year + filter chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select value={baseYear} onChange={e => setBaseYear(Number(e.target.value))} style={{
+                padding: '5px 24px 5px 8px', background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)',
+                color: 'var(--text-primary)', fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 600, cursor: 'pointer', outline: 'none', appearance: 'none',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center',
+              }}>
+                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <button onClick={() => setExcludeViajes(!excludeViajes)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', transition: 'all 0.15s ease', fontFamily: 'inherit',
+                border: '1px solid', whiteSpace: 'nowrap',
                 ...(excludeViajes
                   ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
                   : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139, 92, 246, 0.3)', color: 'var(--color-accent)' }
                 ),
-              }}
-            >
-              ✈️ Viajes {excludeViajes && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}
-            </button>
-            <button
-              onClick={() => setExcludeExtra(!excludeExtra)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 14px', borderRadius: 20,
-                fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                transition: 'all 0.15s ease', fontFamily: 'inherit',
-                border: '1px solid',
+              }}>✈️ Viajes</button>
+              <button onClick={() => setExcludeExtra(!excludeExtra)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', transition: 'all 0.15s ease', fontFamily: 'inherit',
+                border: '1px solid', whiteSpace: 'nowrap',
                 ...(excludeExtra
                   ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
                   : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139, 92, 246, 0.3)', color: 'var(--color-accent)' }
                 ),
-              }}
-            >
-              💰 Extraordinarios {excludeExtra && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}
-            </button>
-          </div>
-        </div>
+              }}>💰 Extras</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select value={baseYear} onChange={e => setBaseYear(Number(e.target.value))} style={{
+                  padding: '6px 28px 6px 10px', background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)', fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 600, cursor: 'pointer', outline: 'none', appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+                }}>
+                  {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <CurrencyToggle currency={currency} onChange={setCurrency} />
+              </div>
+            </div>
+
+            {/* View toggle + filter chips */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 4, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)' }}>
+                {VIEWS.map(v => (
+                  <button key={v.key} onClick={() => setView(v.key)} style={{
+                    padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: 'none',
+                    background: view === v.key ? v.color : 'transparent',
+                    color: view === v.key ? '#fff' : 'var(--text-muted)',
+                    fontSize: 12, fontWeight: view === v.key ? 600 : 400,
+                    cursor: 'pointer', transition: 'all 0.15s ease', fontFamily: 'inherit',
+                  }}>{v.label}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={() => setExcludeViajes(!excludeViajes)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: 20,
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  transition: 'all 0.15s ease', fontFamily: 'inherit', border: '1px solid',
+                  ...(excludeViajes
+                    ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
+                    : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139, 92, 246, 0.3)', color: 'var(--color-accent)' }
+                  ),
+                }}>✈️ Viajes {excludeViajes && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}</button>
+                <button onClick={() => setExcludeExtra(!excludeExtra)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: 20,
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  transition: 'all 0.15s ease', fontFamily: 'inherit', border: '1px solid',
+                  ...(excludeExtra
+                    ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
+                    : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139, 92, 246, 0.3)', color: 'var(--color-accent)' }
+                  ),
+                }}>💰 Extraordinarios {excludeExtra && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}</button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Charts */}

@@ -8,16 +8,16 @@ import ImportTab from './ImportTab'
 import AccountTab from './AccountTab'
 
 const TABS = [
-  { key: 'rates', label: 'Cotizaciones', icon: TrendingUp },
   { key: 'categories', label: 'Categorías', icon: Tag },
   { key: 'persons', label: 'Personas', icon: Users },
+  { key: 'rates', label: 'Cotizaciones', icon: TrendingUp },
   { key: 'import', label: 'Importar', icon: Upload },
   { key: 'account', label: 'Cuenta', icon: User },
 ]
 
 export default function Configuracion() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('rates')
+  const [activeTab, setActiveTab] = useState('categories')
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

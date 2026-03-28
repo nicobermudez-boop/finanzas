@@ -331,7 +331,7 @@ export default function Carga() {
         <div className="ttgl" style={{ marginBottom: 12 }}>
           <button className={`tb ${type === 'expense' ? 'ae' : ''}`}
             onClick={() => { setType('expense'); reset() }}>▼ Gasto</button>
-          <button className={`tb ${type === 'income' ? 'ai' : ''}`}
+          <button className={`tb ${type === 'income' ? 'ai-on' : ''}`}
             onClick={() => { setType('income'); reset() }}>▲ Ingreso</button>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>

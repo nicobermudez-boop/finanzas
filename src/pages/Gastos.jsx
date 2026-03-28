@@ -366,30 +366,56 @@ export default function Gastos() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div className="page-header" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-          <CurrencyToggle currency={currency} onChange={setCurrency} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-          <div style={{ display: 'flex', gap: 3, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)' }}>
-            {PERIODS.map(p => (
-              <button key={p.key} onClick={() => setPeriod(p.key)} style={{ padding: '5px 12px', borderRadius: 'var(--radius-sm)', border: 'none', background: period === p.key ? 'var(--color-accent)' : 'transparent', color: period === p.key ? '#fff' : 'var(--text-muted)', fontSize: 12, fontWeight: period === p.key ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{p.label}</button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-
-            <select value={baseYear} onChange={e => handleYearChange(Number(e.target.value))} style={selectStyle}>
-              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select value={baseMonthIdx} onChange={e => setBaseMonthIdx(Number(e.target.value))} style={selectStyle}>
-              {MONTHS_SHORT.map((m, i) => i <= maxMonth || baseYear < now0.getFullYear() ? <option key={i} value={i}>{m}</option> : null)}
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setExcludeViajes(!excludeViajes)} style={excludeBtnStyle(excludeViajes)}>✈️ Viajes</button>
-            <button onClick={() => setExcludeExtra(!excludeExtra)} style={excludeBtnStyle(excludeExtra)}>💰 Extraordinarios</button>
-          </div>
-        </div>
+      <div className="page-header" style={{ padding: isMobile ? '12px 16px 10px' : '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+        {isMobile ? (
+          <>
+            {/* Mobile row 1: periods + currency toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 3, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)', flex: 1 }}>
+                {PERIODS.map(p => (
+                  <button key={p.key} onClick={() => setPeriod(p.key)} style={{ flex: 1, padding: '5px 4px', borderRadius: 'var(--radius-sm)', border: 'none', background: period === p.key ? 'var(--color-accent)' : 'transparent', color: period === p.key ? '#fff' : 'var(--text-muted)', fontSize: 11, fontWeight: period === p.key ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{p.label}</button>
+                ))}
+              </div>
+              <CurrencyToggle currency={currency} onChange={setCurrency} />
+            </div>
+            {/* Mobile row 2: year + month + filter chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <select value={baseYear} onChange={e => handleYearChange(Number(e.target.value))} style={selectStyle}>
+                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <select value={baseMonthIdx} onChange={e => setBaseMonthIdx(Number(e.target.value))} style={selectStyle}>
+                {MONTHS_SHORT.map((m, i) => i <= maxMonth || baseYear < now0.getFullYear() ? <option key={i} value={i}>{m}</option> : null)}
+              </select>
+              <button onClick={() => setExcludeViajes(!excludeViajes)} style={{ ...excludeBtnStyle(excludeViajes), fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap' }}>✈️ Viajes</button>
+              <button onClick={() => setExcludeExtra(!excludeExtra)} style={{ ...excludeBtnStyle(excludeExtra), fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap' }}>💰 Extras</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+              <CurrencyToggle currency={currency} onChange={setCurrency} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 3, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)' }}>
+                {PERIODS.map(p => (
+                  <button key={p.key} onClick={() => setPeriod(p.key)} style={{ padding: '5px 12px', borderRadius: 'var(--radius-sm)', border: 'none', background: period === p.key ? 'var(--color-accent)' : 'transparent', color: period === p.key ? '#fff' : 'var(--text-muted)', fontSize: 12, fontWeight: period === p.key ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{p.label}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <select value={baseYear} onChange={e => handleYearChange(Number(e.target.value))} style={selectStyle}>
+                  {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select value={baseMonthIdx} onChange={e => setBaseMonthIdx(Number(e.target.value))} style={selectStyle}>
+                  {MONTHS_SHORT.map((m, i) => i <= maxMonth || baseYear < now0.getFullYear() ? <option key={i} value={i}>{m}</option> : null)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setExcludeViajes(!excludeViajes)} style={excludeBtnStyle(excludeViajes)}>✈️ Viajes</button>
+                <button onClick={() => setExcludeExtra(!excludeExtra)} style={excludeBtnStyle(excludeExtra)}>💰 Extraordinarios</button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Conditional cascading filters */}
         {isMobile ? (
