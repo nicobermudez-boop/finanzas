@@ -58,8 +58,8 @@ export default function Login() {
         border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: '40px 32px',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 6 }}>
-            💰 Finanzas
+          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <img src="/icons/icon-192x192.png" alt="Finanzas" style={{ width: 32, height: 32, borderRadius: 6 }} /> Finanzas
           </div>
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             {isForgot ? 'Restablecer contraseña' : isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}

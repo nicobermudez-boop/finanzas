@@ -160,7 +160,7 @@ function AuthGate() {
         color: 'var(--text-muted)',
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>💰</div>
+          <div style={{ marginBottom: 12 }}><img src="/icons/icon-192x192.png" alt="Finanzas" style={{ width: 48, height: 48 }} /></div>
           <div>Cargando...</div>
         </div>
       </div>
