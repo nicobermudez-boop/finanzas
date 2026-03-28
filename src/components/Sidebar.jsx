@@ -78,12 +78,8 @@ const styles = {
     width: 36,
     height: 36,
     borderRadius: 'var(--radius-md)',
-    background: 'linear-gradient(135deg, var(--color-accent), #6366f1)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 18,
     flexShrink: 0,
+    overflow: 'hidden',
   },
   nav: {
     flex: 1,
@@ -160,7 +156,7 @@ export default function Sidebar() {
   const sidebarContent = (
     <div style={styles.sidebar(isCollapsed)}>
       <div style={styles.logo}>
-        <div style={styles.logoIcon}>💰</div>
+        <div style={styles.logoIcon}><img src="/icons/icon-192x192.png" alt="Finanzas" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
         {!isCollapsed && (
           <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
             <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em' }}>
