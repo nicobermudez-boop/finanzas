@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
-import { Filter, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import useIsMobile from '../hooks/useIsMobile'
+import { Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { fmt } from '../lib/format'
 import { getAmount } from '../lib/currency'
 
@@ -38,15 +39,17 @@ function MonthRangeSelector({ value, onChange }) {
   )
 }
 
-function FilterDropdown({ label, value, options, onChange }) {
+function FilterDropdown({ label, value, options, onChange, fullWidth = false }) {
   return (
     <select value={value} onChange={e => onChange(e.target.value)} style={{
       padding: '7px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)',
       borderRadius: 'var(--radius-md)', color: value === 'all' ? 'var(--text-muted)' : 'var(--text-primary)',
-      fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', minWidth: 130,
+      fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
+      ...(fullWidth ? { width: '100%', boxSizing: 'border-box', minWidth: 0 } : { minWidth: 130 }),
       appearance: 'none', paddingRight: 28,
       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
       backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
+      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
     }}>
       <option value="all">{label}</option>
       {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -55,6 +58,7 @@ function FilterDropdown({ label, value, options, onChange }) {
 }
 
 export default function Detallado() {
+  const isMobile = useIsMobile()
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
   const [subcategories, setSubcategories] = useState([])
@@ -65,6 +69,7 @@ export default function Detallado() {
   const [filterCat, setFilterCat] = useState('all')
   const [filterSubcat, setFilterSubcat] = useState('all')
   const [filterConcept, setFilterConcept] = useState('all')
+  const [filterDesc, setFilterDesc] = useState('')
   const [sortCol, setSortCol] = useState('total')
   const [sortDir, setSortDir] = useState('desc')
 
@@ -165,6 +170,9 @@ export default function Detallado() {
         const con = conceptMap[t.concept_id]
         if (!con || con.name !== filterConcept) return false
       }
+      if (filterDesc) {
+        if (!(t.description || '').toLowerCase().includes(filterDesc.toLowerCase())) return false
+      }
       return true
     })
 
@@ -222,7 +230,7 @@ export default function Detallado() {
     const grandTotal = rowArr.reduce((s, r) => s + r.total, 0)
 
     return { rows: rowArr, totals: { total: grandTotal, months: totalMonths } }
-  }, [transactions, currency, filterCat, filterSubcat, filterConcept, catMap, subcatMap, conceptMap, sortCol, sortDir])
+  }, [transactions, currency, filterCat, filterSubcat, filterConcept, filterDesc, catMap, subcatMap, conceptMap, sortCol, sortDir])
 
   const handleSort = (col) => {
     if (sortCol === col) setSortDir(prev => prev === 'desc' ? 'asc' : 'desc')
@@ -250,22 +258,60 @@ export default function Detallado() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div className="page-header" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+      <div className="page-header" style={{ padding: isMobile ? '12px 16px 10px' : '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <MonthRangeSelector value={monthRange} onChange={setMonthRange} />
             <CurrencyToggle currency={currency} onChange={setCurrency} />
           </div>
+          {!isMobile && (
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>
+              {rows.length} filas
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Filter size={15} style={{ color: 'var(--text-muted)' }} />
-          <FilterDropdown label="Categoría" value={filterCat} options={catOptions} onChange={handleFilterCat} />
-          <FilterDropdown label="Subcategoría" value={filterSubcat} options={subcatOptions} onChange={handleFilterSubcat} />
-          <FilterDropdown label="Concepto" value={filterConcept} options={conceptOptions} onChange={setFilterConcept} />
-          <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>
-            {rows.length} filas
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <FilterDropdown label="Categoría" value={filterCat} options={catOptions} onChange={handleFilterCat} fullWidth />
+              <FilterDropdown label="Subcategoría" value={filterSubcat} options={subcatOptions} onChange={handleFilterSubcat} fullWidth />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <FilterDropdown label="Concepto" value={filterConcept} options={conceptOptions} onChange={setFilterConcept} fullWidth />
+              <input
+                type="text"
+                placeholder="Descripción"
+                value={filterDesc}
+                onChange={e => setFilterDesc(e.target.value)}
+                style={{
+                  padding: '7px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)', color: filterDesc ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontSize: 13, fontFamily: 'inherit', outline: 'none', width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <FilterDropdown label="Categoría" value={filterCat} options={catOptions} onChange={handleFilterCat} />
+            <FilterDropdown label="Subcategoría" value={filterSubcat} options={subcatOptions} onChange={handleFilterSubcat} />
+            <FilterDropdown label="Concepto" value={filterConcept} options={conceptOptions} onChange={setFilterConcept} />
+            <input
+              type="text"
+              placeholder="Descripción"
+              value={filterDesc}
+              onChange={e => setFilterDesc(e.target.value)}
+              style={{
+                padding: '7px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)', color: filterDesc ? 'var(--text-primary)' : 'var(--text-muted)',
+                fontSize: 13, fontFamily: 'inherit', outline: 'none', minWidth: 130,
+              }}
+            />
+            <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>
+              {rows.length} filas
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}

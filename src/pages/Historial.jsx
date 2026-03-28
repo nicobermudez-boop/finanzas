@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { getExchangeRate } from '../lib/exchangeRate'
 import { useAuth } from '../context/AuthContext'
 import { Loader2, Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
-
+import useIsMobile from '../hooks/useIsMobile'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import { fmt } from '../lib/format'
 
@@ -19,6 +19,7 @@ function fmtDate(d) {
 
 export default function Historial() {
   const { user } = useAuth()
+  const isMobile = useIsMobile()
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
   const [subcategories, setSubcategories] = useState([])
@@ -301,8 +302,34 @@ export default function Historial() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div className="page-header" style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+      <div className="page-header" style={{ padding: isMobile ? '12px 16px 10px' : '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: isMobile ? 'nowrap' : 'wrap', ...(isMobile ? {} : { marginBottom: 16 }) }}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)', ...(isMobile ? { flex: 1 } : { width: 'fit-content' }) }}>
+            <button
+              onClick={() => setTab('expense')}
+              style={{
+                padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
+                background: tab === 'expense' ? 'var(--color-expense)' : 'transparent',
+                color: tab === 'expense' ? '#fff' : 'var(--text-muted)',
+                fontSize: 12, fontWeight: tab === 'expense' ? 600 : 400,
+                cursor: 'pointer', fontFamily: 'inherit',
+                ...(isMobile ? { flex: 1 } : {}),
+              }}
+            >Gastos ({transactions.filter(t => t.type === 'expense').length})</button>
+            <button
+              onClick={() => setTab('income')}
+              style={{
+                padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
+                background: tab === 'income' ? 'var(--color-income)' : 'transparent',
+                color: tab === 'income' ? '#fff' : 'var(--text-muted)',
+                fontSize: 12, fontWeight: tab === 'income' ? 600 : 400,
+                cursor: 'pointer', fontFamily: 'inherit',
+                ...(isMobile ? { flex: 1 } : {}),
+              }}
+            >Ingresos ({transactions.filter(t => t.type === 'income').length})</button>
+          </div>
+          {/* Export button */}
           <button
             onClick={exportCSV}
             style={{
@@ -311,36 +338,13 @@ export default function Historial() {
               border: '1px solid var(--border-subtle)', background: 'var(--bg-tertiary)',
               color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
               cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              whiteSpace: 'nowrap', flexShrink: 0,
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
           >
-            <Download size={14} /> Exportar CSV
+            <Download size={14} /> {isMobile ? 'CSV' : 'Exportar CSV'}
           </button>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 3, border: '1px solid var(--border-subtle)', width: 'fit-content' }}>
-          <button
-            onClick={() => setTab('expense')}
-            style={{
-              padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
-              background: tab === 'expense' ? 'var(--color-expense)' : 'transparent',
-              color: tab === 'expense' ? '#fff' : 'var(--text-muted)',
-              fontSize: 12, fontWeight: tab === 'expense' ? 600 : 400,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >Gastos ({transactions.filter(t => t.type === 'expense').length})</button>
-          <button
-            onClick={() => setTab('income')}
-            style={{
-              padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
-              background: tab === 'income' ? 'var(--color-income)' : 'transparent',
-              color: tab === 'income' ? '#fff' : 'var(--text-muted)',
-              fontSize: 12, fontWeight: tab === 'income' ? 600 : 400,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >Ingresos ({transactions.filter(t => t.type === 'income').length})</button>
         </div>
       </div>
 
