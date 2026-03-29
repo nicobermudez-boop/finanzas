@@ -341,12 +341,12 @@ export default function Dashboard() {
                 {/* Right: avg/mes */}
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end', minWidth: 80 }}>
                   <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4 }}>Prom/mes</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: kpi.color, opacity: 0.45, letterSpacing: '-0.02em', marginBottom: 6 }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: kpi.color, opacity: 0.55, letterSpacing: '-0.02em', marginBottom: 6 }}>
                     {H(fmtCompact(kpi.avg, currency))}
                   </div>
                   <div style={{ fontSize: 10, lineHeight: 1.7, textAlign: 'right' }}>
-                    {kpi.yaPct !== null && <div style={{ color: 'var(--text-dim)', opacity: 0.45 }}>vs año ant: <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>{H(`${yaAvgDiff >= 0 ? '+' : ''}${fmtCompact(yaAvgDiff, currency)}`)}</span></div>}
-                    {kpi.pct !== null && <div style={{ color: 'var(--text-dim)', opacity: 0.45 }}>vs per. ant: <span style={{ color: vc(kpi.diff, kpi.upIsGood) }}>{H(`${prevAvgDiff >= 0 ? '+' : ''}${fmtCompact(prevAvgDiff, currency)}`)}</span></div>}
+                    {kpi.yaPct !== null && <div style={{ color: 'var(--text-dim)', opacity: 0.55 }}>vs año ant: <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>{H(`${yaAvgDiff >= 0 ? '+' : ''}${fmtCompact(yaAvgDiff, currency)}`)}</span></div>}
+                    {kpi.pct !== null && <div style={{ color: 'var(--text-dim)', opacity: 0.55 }}>vs per. ant: <span style={{ color: vc(kpi.diff, kpi.upIsGood) }}>{H(`${prevAvgDiff >= 0 ? '+' : ''}${fmtCompact(prevAvgDiff, currency)}`)}</span></div>}
                   </div>
                 </div>
               </div>

@@ -486,10 +486,10 @@ export default function Gastos() {
             {/* Right: prom/mes */}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end', minWidth: 80 }}>
               <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4 }}>Prom/mes</div>
-              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense)', opacity: 0.45, letterSpacing: '-0.02em', marginBottom: 6 }}>{H(fmtC(kpis.avgM, currency))}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense)', opacity: 0.55, letterSpacing: '-0.02em', marginBottom: 6 }}>{H(fmtC(kpis.avgM, currency))}</div>
               <div style={{ fontSize: 10, lineHeight: 1.7, textAlign: 'right' }}>
-                {kpis.yaTotalExp > 0 && <div style={{ color: 'var(--text-dim)', opacity: 0.45 }}>vs año ant: <span style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true) }}>{H(`${(kpis.totalExp - kpis.yaTotalExp) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.totalExp - kpis.yaTotalExp) / (kpis.totalM || 1)), currency)}`)}</span></div>}
-                {kpis.prevTotalExp > 0 && <div style={{ color: 'var(--text-dim)', opacity: 0.45 }}>vs per. ant: <span style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true) }}>{H(`${(kpis.totalExp - kpis.prevTotalExp) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.totalExp - kpis.prevTotalExp) / (kpis.totalM || 1)), currency)}`)}</span></div>}
+                {kpis.yaTotalExp > 0 && <div style={{ color: 'var(--text-dim)', opacity: 0.55 }}>vs año ant: <span style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true) }}>{H(`${(kpis.totalExp - kpis.yaTotalExp) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.totalExp - kpis.yaTotalExp) / (kpis.totalM || 1)), currency)}`)}</span></div>}
+                {kpis.prevTotalExp > 0 && <div style={{ color: 'var(--text-dim)', opacity: 0.55 }}>vs per. ant: <span style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true) }}>{H(`${(kpis.totalExp - kpis.prevTotalExp) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.totalExp - kpis.prevTotalExp) / (kpis.totalM || 1)), currency)}`)}</span></div>}
               </div>
             </div>
           </div>

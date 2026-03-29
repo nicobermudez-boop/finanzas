@@ -20,7 +20,7 @@ export function fmtCompact(value, currency) {
   const abs = Math.abs(value)
   const sign = value < 0 ? '-' : ''
   const isUSD = currency === 'USD'
-  const prefix = isUSD ? 'US$' : '$'
+  const prefix = '$'
   const locale = isUSD ? 'en-US' : 'es-AR'
 
   if (abs >= 1_000_000) {
@@ -42,7 +42,7 @@ export function fmtLabel(value, currency) {
   const abs = Math.abs(value)
   const sign = value < 0 ? '-' : ''
   const isUSD = currency === 'USD'
-  const prefix = isUSD ? 'US$' : '$'
+  const prefix = '$'
   if (abs >= 1_000_000) return `${sign}${prefix}${(abs / 1_000_000).toFixed(1)}M`
   if (abs >= 1_000) {
     if (isUSD) return `${sign}${prefix}${(abs / 1_000).toFixed(1)}k`
