@@ -5,7 +5,7 @@ import { usePrivacy } from '../context/PrivacyContext'
 import useIsMobile from '../hooks/useIsMobile'
 import {
   XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Line
+  Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Line, LabelList
 } from 'recharts'
 import { Loader2 } from 'lucide-react'
 import { fmt, fmtCompact } from '../lib/format'
@@ -332,8 +332,8 @@ export default function Dashboard() {
                     {H(fmt(kpi.value, currency))}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.7 }}>
-                    {kpi.yaPct !== null && <div>vs YA: <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood), fontWeight: 600 }}>{kpi.yaPct >= 0 ? '+' : ''}{kpi.yaPct.toFixed(1)}%</span> <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>({H(`${kpi.yaDiff >= 0 ? '+' : ''}${fmtCompact(kpi.yaDiff, currency)}`)})</span></div>}
-                    {kpi.pct !== null && <div>vs Per: <span style={{ color: vc(kpi.diff, kpi.upIsGood), fontWeight: 600 }}>{kpi.pct >= 0 ? '+' : ''}{kpi.pct.toFixed(1)}%</span> <span style={{ color: vc(kpi.diff, kpi.upIsGood) }}>({H(`${kpi.diff >= 0 ? '+' : ''}${fmtCompact(kpi.diff, currency)}`)})</span></div>}
+                    {kpi.yaPct !== null && <div>vs año ant: <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood), fontWeight: 600 }}>{kpi.yaPct >= 0 ? '+' : ''}{kpi.yaPct.toFixed(1)}%</span> <span style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>({H(`${kpi.yaDiff >= 0 ? '+' : ''}${fmtCompact(kpi.yaDiff, currency)}`)})</span></div>}
+                    {kpi.pct !== null && <div>vs per. ant: <span style={{ color: vc(kpi.diff, kpi.upIsGood), fontWeight: 600 }}>{kpi.pct >= 0 ? '+' : ''}{kpi.pct.toFixed(1)}%</span> <span style={{ color: vc(kpi.diff, kpi.upIsGood) }}>({H(`${kpi.diff >= 0 ? '+' : ''}${fmtCompact(kpi.diff, currency)}`)})</span></div>}
                   </div>
                 </div>
                 {/* Divider */}
@@ -341,12 +341,12 @@ export default function Dashboard() {
                 {/* Right: avg/mes */}
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end', minWidth: 80 }}>
                   <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4 }}>Prom/mes</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', marginBottom: 6 }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: kpi.color, opacity: 0.35, letterSpacing: '-0.02em', marginBottom: 6 }}>
                     {H(fmtCompact(kpi.avg, currency))}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.7, textAlign: 'right' }}>
-                    {kpi.yaPct !== null && <div style={{ color: vc(kpi.yaDiff, kpi.upIsGood) }}>YA {H(`${yaAvgDiff >= 0 ? '+' : ''}${fmtCompact(yaAvgDiff, currency)}`)}</div>}
-                    {kpi.pct !== null && <div style={{ color: vc(kpi.diff, kpi.upIsGood) }}>Per {H(`${prevAvgDiff >= 0 ? '+' : ''}${fmtCompact(prevAvgDiff, currency)}`)}</div>}
+                  <div style={{ fontSize: 10, lineHeight: 1.7, textAlign: 'right' }}>
+                    {kpi.yaPct !== null && <div style={{ color: vc(kpi.yaDiff, kpi.upIsGood), opacity: 0.45 }}>vs año ant: {H(`${yaAvgDiff >= 0 ? '+' : ''}${fmtCompact(yaAvgDiff, currency)}`)}</div>}
+                    {kpi.pct !== null && <div style={{ color: vc(kpi.diff, kpi.upIsGood), opacity: 0.45 }}>vs per. ant: {H(`${prevAvgDiff >= 0 ? '+' : ''}${fmtCompact(prevAvgDiff, currency)}`)}</div>}
                   </div>
                 </div>
               </div>
@@ -365,8 +365,12 @@ export default function Dashboard() {
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => hideNumbers ? '•••' : fmtCompact(v, currency)} width={60} />
                 <Tooltip content={<CustomTooltip currency={currency} hideNumbers={hideNumbers} />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Ingresos" fill="#22c55e" opacity={0.8} radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Gastos" fill="#ef4444" opacity={0.8} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Ingresos" fill="#22c55e" opacity={0.8} radius={[3, 3, 0, 0]}>
+                  <LabelList dataKey="Ingresos" position="top" formatter={v => hideNumbers ? '' : fmtCompact(v, currency)} style={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }} />
+                </Bar>
+                <Bar dataKey="Gastos" fill="#ef4444" opacity={0.8} radius={[3, 3, 0, 0]}>
+                  <LabelList dataKey="Gastos" position="top" formatter={v => hideNumbers ? '' : fmtCompact(v, currency)} style={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }} />
+                </Bar>
                 <Line type="monotone" dataKey="Ahorro" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 3 }} activeDot={{ r: 5 }} />
               </ComposedChart>
             </ResponsiveContainer>

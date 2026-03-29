@@ -148,7 +148,7 @@ export default function Gastos() {
   const toggleSub = (id) => { setFilterSubs(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]); setFilterCons([]) }
   const toggleCon = (id) => setFilterCons(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
 
-  const { kpis, barData, distData, tableData, catColors } = useMemo(() => {
+  const { kpis, barData, distData, tableData, chartColors } = useMemo(() => {
     const endDate = new Date(baseYear, baseMonthIdx + 1, 0)
     let startDate
 
@@ -224,15 +224,36 @@ export default function Gastos() {
     const d = new Date(startDate)
     while (d <= endDate) { months.push({ y: d.getFullYear(), m: d.getMonth() }); d.setMonth(d.getMonth() + 1) }
 
-    const uniqCats = [...new Set(curE.map(t => t.category_id).filter(Boolean))]
-    const cCol = {}; uniqCats.forEach((id, i) => { cCol[id] = COLORS[i % COLORS.length] })
+    const chartDim = filterCats.length === 1 && filterSubs.length === 1 ? 'concept'
+                   : filterCats.length === 1 ? 'subcategory'
+                   : 'category'
+    const getChartKey = (t) => {
+      if (chartDim === 'concept') return t.concept_id
+      if (chartDim === 'subcategory') {
+        if (catMap[t.category_id]?.name === 'Viajes' && t.destination) return `dest_${t.destination}`
+        return t.subcategory_id
+      }
+      return t.category_id
+    }
+    const getChartName = (id) => {
+      if (chartDim === 'concept') return conMap[id]?.name || '\u2013'
+      if (chartDim === 'subcategory') {
+        if (String(id).startsWith('dest_')) return String(id).replace('dest_', '')
+        return subMap[id]?.name || '\u2013'
+      }
+      return catMap[id]?.name || '\u2013'
+    }
+    const uniqItems = [...new Set(curE.map(t => getChartKey(t)).filter(Boolean))]
+    const chartColors = {}
+    uniqItems.forEach((id, i) => { chartColors[getChartName(id)] = COLORS[i % COLORS.length] })
 
     const bData = months.map(({ y, m }) => {
       const label = MONTHS_SHORT[m] + ' ' + String(y).slice(2)
       const entry = { name: label }; let mTotal = 0
-      uniqCats.forEach(cid => {
-        const a = curE.filter(t => { const td = new Date(t.date + 'T00:00:00'); return td.getFullYear() === y && td.getMonth() === m && t.category_id === cid }).reduce((s, t) => s + getAmount(t, currency), 0)
-        entry[catMap[cid]?.name || cid] = Math.round(a); mTotal += a
+      uniqItems.forEach(id => {
+        const name = getChartName(id)
+        const a = curE.filter(t => { const td = new Date(t.date + 'T00:00:00'); return td.getFullYear() === y && td.getMonth() === m && getChartKey(t) === id }).reduce((s, t) => s + getAmount(t, currency), 0)
+        entry[name] = Math.round(a); mTotal += a
       })
       entry._total = Math.round(mTotal)
       const mInc = curI.filter(t => { const td = new Date(t.date + 'T00:00:00'); return td.getFullYear() === y && td.getMonth() === m }).reduce((s, t) => s + getAmount(t, currency), 0)
@@ -309,8 +330,8 @@ export default function Gastos() {
     }).sort((a, b) => b.total - a.total)
 
     return {
-      kpis: { totalExp, prevTotalExp, yaTotalExp, totalInc, prevTotalInc, yaTotalInc, avgM, pctInc, prevPctInc, yaPctInc },
-      barData: bData, distData: dData, tableData: tData, catColors: cCol,
+      kpis: { totalExp, prevTotalExp, yaTotalExp, totalInc, prevTotalInc, yaTotalInc, avgM, totalM, pctInc, prevPctInc, yaPctInc },
+      barData: bData, distData: dData, tableData: tData, chartColors,
     }
   }, [transactions, currency, period, baseYear, baseMonthIdx, excludeExtra, excludeViajes, filterCats, filterSubs, filterCons, distGroup, tableGroup, catMap, subMap, conMap])
 
@@ -450,15 +471,26 @@ export default function Gastos() {
       <div style={{ flex: isMobile ? 'none' : 1, overflow: isMobile ? 'visible' : 'auto', padding: '20px 24px' }}>
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 24 }}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 6 }}>Total Gastos</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense)' }}>{H(fmt(kpis.totalExp, currency))}</div>
-              <div style={{ fontSize: 11, color: 'var(--color-expense)', opacity: 0.55, fontFamily: "'JetBrains Mono', monospace" }}>prom/mes {H(fmtC(kpis.avgM, currency))}</div>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 16, display: 'flex', gap: 0 }}>
+            {/* Left */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 6 }}>Total Gastos</div>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense)', letterSpacing: '-0.02em', marginBottom: 6 }}>{H(fmt(kpis.totalExp, currency))}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+                {kpis.yaTotalExp > 0 && <div>vs año ant: <span style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.yaTotalExp))}</span> <span style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true) }}>({H(`${(kpis.totalExp - kpis.yaTotalExp) >= 0 ? '+' : ''}${fmtC(kpis.totalExp - kpis.yaTotalExp, currency)}`)})</span></div>}
+                {kpis.prevTotalExp > 0 && <div>vs per. ant: <span style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.prevTotalExp))}</span> <span style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true) }}>({H(`${(kpis.totalExp - kpis.prevTotalExp) >= 0 ? '+' : ''}${fmtC(kpis.totalExp - kpis.prevTotalExp, currency)}`)})</span></div>}
+              </div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
-              {kpis.yaTotalExp > 0 && <div>vs año ant: <span style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.yaTotalExp))}</span> <span>({H(`${(kpis.totalExp - kpis.yaTotalExp) >= 0 ? '+' : ''}${fmtC(kpis.totalExp - kpis.yaTotalExp, currency)}`)})</span></div>}
-              {kpis.prevTotalExp > 0 && <div>vs per. ant: <span style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true), fontWeight: 600 }}>{fPct(vPct(kpis.totalExp, kpis.prevTotalExp))}</span> <span>({H(`${(kpis.totalExp - kpis.prevTotalExp) >= 0 ? '+' : ''}${fmtC(kpis.totalExp - kpis.prevTotalExp, currency)}`)})</span></div>}
+            {/* Divider */}
+            <div style={{ width: 1, background: 'var(--border-subtle)', margin: '0 16px', flexShrink: 0 }} />
+            {/* Right: prom/mes */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end', minWidth: 80 }}>
+              <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4 }}>Prom/mes</div>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-expense)', opacity: 0.35, letterSpacing: '-0.02em', marginBottom: 6 }}>{H(fmtC(kpis.avgM, currency))}</div>
+              <div style={{ fontSize: 10, lineHeight: 1.7, textAlign: 'right' }}>
+                {kpis.yaTotalExp > 0 && <div style={{ color: vColor(kpis.totalExp - kpis.yaTotalExp, true), opacity: 0.45 }}>vs año ant: {H(`${(kpis.totalExp - kpis.yaTotalExp) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.totalExp - kpis.yaTotalExp) / (kpis.totalM || 1)), currency)}`)}</div>}
+                {kpis.prevTotalExp > 0 && <div style={{ color: vColor(kpis.totalExp - kpis.prevTotalExp, true), opacity: 0.45 }}>vs per. ant: {H(`${(kpis.totalExp - kpis.prevTotalExp) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.totalExp - kpis.prevTotalExp) / (kpis.totalM || 1)), currency)}`)}</div>}
+              </div>
             </div>
           </div>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 16 }}>
@@ -467,8 +499,8 @@ export default function Gastos() {
               {kpis.pctInc != null ? `${kpis.pctInc.toFixed(1)}%` : '\u2013'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.6 }}>
-              {kpis.yaPctInc != null && <div>vs año ant: <span style={{ color: vColor(kpis.pctInc - kpis.yaPctInc, true), fontWeight: 600 }}>{fBps(kpis.pctInc, kpis.yaPctInc)}</span></div>}
-              {kpis.prevPctInc != null && <div>vs per. ant: <span style={{ color: vColor(kpis.pctInc - kpis.prevPctInc, true), fontWeight: 600 }}>{fBps(kpis.pctInc, kpis.prevPctInc)}</span></div>}
+              {kpis.yaPctInc != null && <div>vs año ant: <span style={{ color: vColor(kpis.pctInc - kpis.yaPctInc, true), fontWeight: 600 }}>{fBps(kpis.pctInc, kpis.yaPctInc)}</span>{kpis.totalInc > 0 && <span style={{ color: vColor(kpis.pctInc - kpis.yaPctInc, true) }}> ({H(`${(kpis.pctInc - kpis.yaPctInc) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.pctInc - kpis.yaPctInc) * kpis.totalInc / 100), currency)}`)})</span>}</div>}
+              {kpis.prevPctInc != null && <div>vs per. ant: <span style={{ color: vColor(kpis.pctInc - kpis.prevPctInc, true), fontWeight: 600 }}>{fBps(kpis.pctInc, kpis.prevPctInc)}</span>{kpis.totalInc > 0 && <span style={{ color: vColor(kpis.pctInc - kpis.prevPctInc, true) }}> ({H(`${(kpis.pctInc - kpis.prevPctInc) >= 0 ? '+' : ''}${fmtC(Math.round((kpis.pctInc - kpis.prevPctInc) * kpis.totalInc / 100), currency)}`)})</span>}</div>}
             </div>
           </div>
         </div>
@@ -485,8 +517,8 @@ export default function Gastos() {
                 <YAxis yAxisId="right" orientation="right" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} width={45} domain={[0, 'auto']} />
                 <Tooltip content={<CustomTooltip currency={currency} hideNumbers={hideNumbers} />} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                {Object.keys(catColors).map((cid, i, arr) => (
-                  <Bar key={cid} yAxisId="left" dataKey={catMap[cid]?.name || cid} stackId="exp" fill={catColors[cid]}>
+                {Object.keys(chartColors).map((name, i, arr) => (
+                  <Bar key={name} yAxisId="left" dataKey={name} stackId="exp" fill={chartColors[name]}>
                     {i === arr.length - 1 && <LabelList dataKey="_total" content={TotalLabel} position="top" />}
                   </Bar>
                 ))}
@@ -540,11 +572,11 @@ export default function Gastos() {
                 </div>
               </div>
             </div>
-            <div style={{ overflow: 'auto', maxHeight: 500 }}>
+            <div style={{ overflow: 'auto', maxHeight: 500, position: 'relative' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-strong)' }}>
-                    <th style={{ padding: '6px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', textAlign: 'left' }}>{tableGroup === 'category' ? 'Categoría' : tableGroup === 'subcategory' ? 'Subcategoría' : tableGroup === 'concept' ? 'Concepto' : 'Descripción'}</th>
+                  <tr style={{ borderBottom: '2px solid var(--border-strong)', position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg-card)' }}>
+                    <th style={{ padding: '6px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', textAlign: 'left', position: 'sticky', left: 0, zIndex: 3, background: 'var(--bg-card)' }}>{tableGroup === 'category' ? 'Categoría' : tableGroup === 'subcategory' ? 'Subcategoría' : tableGroup === 'concept' ? 'Concepto' : 'Descripción'}</th>
                     <th style={{ padding: '6px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', textAlign: 'right' }}>Total<br/><span style={{ fontWeight: 400, fontSize: 9, opacity: 0.7 }}>Prom/mes</span></th>
                     <th style={{ padding: '6px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', textAlign: 'right' }}>% Ing.</th>
                     <th style={{ padding: '6px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', textAlign: 'right' }}>{compareMode === 'ya' ? '% vs YA' : '% vs Per.'}</th>
@@ -561,9 +593,9 @@ export default function Gastos() {
                     const bpsImpact = compareMode === 'ya' ? r.yaBpsImpact : r.prevBpsImpact
                     return (
                       <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <td style={{ padding: '6px 8px' }}>
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; const td = e.currentTarget.querySelector('td:first-child'); if (td) td.style.background = 'var(--bg-hover)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; const td = e.currentTarget.querySelector('td:first-child'); if (td) td.style.background = 'var(--bg-card)' }}>
+                        <td style={{ padding: '6px 8px', position: 'sticky', left: 0, zIndex: 1, background: 'var(--bg-card)' }}>
                           <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500 }}>{r.name}</div>
                           {r.parent && <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{r.parent}</div>}
                         </td>
