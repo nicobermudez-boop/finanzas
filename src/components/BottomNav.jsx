@@ -89,7 +89,7 @@ export default function BottomNav() {
                 marginBottom: 0,
                 boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
               }}>
-                <Icon size={24} color="#fff" />
+                <Icon size={24} color="#fff" strokeWidth={1.75} />
               </div>
             </button>
           )
@@ -115,7 +115,7 @@ export default function BottomNav() {
               transition: 'color 0.15s ease',
             }}
           >
-            <Icon size={20} />
+            <Icon size={20} strokeWidth={1.75} />
             <span style={{
               fontSize: 11,
               fontFamily: 'inherit',

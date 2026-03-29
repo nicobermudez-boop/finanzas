@@ -115,9 +115,20 @@ function AppLayout() {
           overflow: isMobile ? 'auto' : 'hidden',
           transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           background: 'var(--bg-primary)',
-          paddingBottom: isMobile ? 64 : 0,
+          paddingBottom: isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px))' : 0,
           boxSizing: 'border-box',
         }}>
+          {isMobile && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 'env(safe-area-inset-top, 0px)',
+              background: 'var(--bg-secondary)',
+              zIndex: 61,
+            }} />
+          )}
           {isMobile && <MobileTopBar hidden={hidden} />}
           <ChunkErrorBoundary>
             <Suspense fallback={<PageLoader />}>

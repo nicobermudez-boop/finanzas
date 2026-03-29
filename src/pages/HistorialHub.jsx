@@ -14,7 +14,7 @@ export default function HistorialHub() {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: 'calc(100dvh - 44px - 64px - env(safe-area-inset-top, 0px))',
+      height: 'calc(100dvh - 44px - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
       overflow: 'hidden',
     }}>
       <div style={{
