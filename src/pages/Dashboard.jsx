@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import { usePrivacy } from '../context/PrivacyContext'
@@ -7,7 +8,9 @@ import {
   XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Line, LabelList
 } from 'recharts'
-import { Loader2 } from 'lucide-react'
+import { SkeletonDashboard } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import { LayoutDashboard } from 'lucide-react'
 import { fmt, fmtCompact } from '../lib/format'
 import { getAmount } from '../lib/currency'
 
@@ -39,6 +42,7 @@ function CustomTooltip({ active, payload, label, currency, hideNumbers }) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { hideNumbers } = usePrivacy()
   const H = (s) => hideNumbers ? '••••••' : s
   const isMobile = useIsMobile()
@@ -199,12 +203,10 @@ export default function Dashboard() {
     fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
   }
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: 'var(--text-muted)' }}>
-        <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /><span>Cargando...</span>
-      </div>
-    )
+  if (loading) return <SkeletonDashboard />
+
+  if (!loading && transactions.length === 0 && !loadError) {
+    return <EmptyState icon={LayoutDashboard} title="Sin transacciones" description="Registra tu primer ingreso o gasto para ver el resumen." actionLabel="Ir a Carga" onAction={() => navigate('/carga')} />
   }
 
   if (loadError) {

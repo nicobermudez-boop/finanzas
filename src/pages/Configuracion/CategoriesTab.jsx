@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fetchAllTransactions } from '../../lib/fetchAll'
 import { ChevronRight } from 'lucide-react'
+import { SkeletonConfig } from '../../components/Skeleton'
 import CrudList from './CrudList'
 import WizardModal from './WizardModal'
 
@@ -142,7 +143,7 @@ export default function CategoriesTab({ user }) {
     } catch { showCrudError('Error al eliminar el concepto.') }
   }
 
-  if (loading) return <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>Cargando...</div>
+  if (loading) return <SkeletonConfig />
 
   if (loadError) return (
     <div style={{ padding: 24, textAlign: 'center' }}>

@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import useIsMobile from '../hooks/useIsMobile'
-import { Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Table2 as TableIcon } from 'lucide-react'
+import { SkeletonTable } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 import { fmt } from '../lib/format'
 import { getAmount } from '../lib/currency'
 
@@ -317,15 +319,9 @@ export default function Detallado() {
       {/* Table */}
       <div style={{ flex: 1, overflow: 'auto', position: 'relative', WebkitOverflowScrolling: 'touch' }}>
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: 'var(--text-muted)' }}>
-            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /><span>Cargando...</span>
-            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-          </div>
+          <SkeletonTable />
         ) : rows.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 40, opacity: 0.3 }}>📊</div>
-            <div style={{ fontSize: 15 }}>No hay gastos en el período seleccionado</div>
-          </div>
+          <EmptyState icon={TableIcon} title="Sin gastos en este periodo" description="Proba con otro rango de meses o ajusta los filtros." />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
             <thead>

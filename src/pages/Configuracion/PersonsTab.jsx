@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fetchAllTransactions } from '../../lib/fetchAll'
 import CrudList from './CrudList'
+import { SkeletonConfig } from '../../components/Skeleton'
 
 export default function PersonsTab({ user }) {
   const [persons, setPersons] = useState([])
@@ -53,7 +54,7 @@ export default function PersonsTab({ user }) {
     } catch { showCrudError('Error al eliminar la persona.') }
   }
 
-  if (loading) return <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>Cargando...</div>
+  if (loading) return <SkeletonConfig />
 
   if (loadError) return (
     <div style={{ padding: 24, textAlign: 'center' }}>

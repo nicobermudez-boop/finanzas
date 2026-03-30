@@ -2,7 +2,14 @@ import { fmtForm as fmt } from '../lib/format'
 
 // RecentTransactions — últimas transacciones con click para repetir
 export default function RecentTransactions({ transactions, onRepeat }) {
-  if (!transactions.length) return null
+  if (!transactions.length) return (
+    <div className="rs">
+      <div className="rt">Últimos registros</div>
+      <div style={{ padding: '16px 12px', color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>
+        Los últimos movimientos aparecerán acá.
+      </div>
+    </div>
+  )
 
   return (
     <div className="rs">
@@ -14,7 +21,7 @@ export default function RecentTransactions({ transactions, onRepeat }) {
             <div className="rn">
               <div className="rc2">
                 {tx.concepts?.name || tx.income_concept || ''}
-                {tx.destination && <span style={{ color: 'var(--txd)' }}> · {tx.destination}</span>}
+                {tx.destination && <span style={{ color: 'var(--text-muted)' }}> · {tx.destination}</span>}
                 {tx.description && tx.description !== (tx.concepts?.name || tx.income_concept) && (
                   <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {tx.description}</span>
                 )}
@@ -31,7 +38,7 @@ export default function RecentTransactions({ transactions, onRepeat }) {
             <div className={`ra ${tx.type}`}>
               {tx.type === 'expense' ? '−' : '+'}{fmt(tx.amount, tx.currency)}
             </div>
-            <span style={{ fontSize: 13, color: 'var(--txd)', opacity: 0.6 }}>↩</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', opacity: 0.6 }}>↩</span>
           </div>
         </div>
       ))}

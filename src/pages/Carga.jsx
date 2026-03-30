@@ -8,6 +8,7 @@ import CategoryGrid from '../components/CategoryGrid'
 import RecentTransactions from '../components/RecentTransactions'
 import { fmtForm as fmt, fmtInput } from '../lib/format'
 import useIsMobile from '../hooks/useIsMobile'
+import { SkeletonForm } from '../components/Skeleton'
 
 const INCOME_CONCEPTS = [
   { name: 'Sueldo', icon: '💰', defaultSubtype: 'recurrente' },
@@ -293,15 +294,7 @@ export default function Carga() {
 
   const selCat = (id) => { setCatId(id); setSubId(null); setConId(null); setTimeout(() => aRef.current?.focus(), 50) }
 
-  if (loading) {
-    return (
-      <div className="app">
-        <div className="loading-screen">
-          <div className="loading-text">Cargando...</div>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <SkeletonForm />
 
   if (loadError) {
     return (
@@ -479,10 +472,10 @@ export default function Carga() {
           {isRec && <div className="rc sec-in">
             <select className="sf" value={rFreq} onChange={e => setRFreq(e.target.value)}>
               {FREQS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}</select>
-            <span style={{ fontSize: 12, color: 'var(--txm)' }}>×</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>×</span>
             <input className="ii" type="number" min="2" max="60" value={rPer}
               onChange={e => setRPer(Math.max(2, parseInt(e.target.value) || 2))} />
-            <span style={{ fontSize: 12, color: 'var(--txm)' }}>períodos</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>períodos</span>
           </div>}
         </div>
       </div>

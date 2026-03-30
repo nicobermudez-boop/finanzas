@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getExchangeRate } from '../lib/exchangeRate'
 import { useAuth } from '../context/AuthContext'
-import { Loader2, Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { SkeletonTable } from '../components/Skeleton'
 import useIsMobile from '../hooks/useIsMobile'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import { fmt } from '../lib/format'
@@ -275,14 +276,7 @@ export default function Historial() {
     }),
   }
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: 'var(--text-muted)' }}>
-        <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-        <span>Cargando...</span>
-      </div>
-    )
-  }
+  if (loading) return <SkeletonTable />
 
   if (loadError) {
     return (

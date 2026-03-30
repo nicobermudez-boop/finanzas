@@ -7,7 +7,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
-import { Loader2 } from 'lucide-react'
+import { SkeletonEvolucion } from '../components/Skeleton'
 import { fmtCompact as fmt, fmtLabel } from '../lib/format'
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -164,14 +164,7 @@ export default function Evolucion() {
 
   const activeView = VIEWS.find(v => v.key === view)
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: 'var(--text-muted)' }}>
-        <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-        <span>Cargando...</span>
-      </div>
-    )
-  }
+  if (loading) return <SkeletonEvolucion />
 
   return (
     <div style={{ height: isMobile ? 'auto' : '100%', display: 'flex', flexDirection: 'column', overflow: isMobile ? 'visible' : 'hidden' }}>

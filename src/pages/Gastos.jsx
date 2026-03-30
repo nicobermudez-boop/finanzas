@@ -8,7 +8,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ComposedChart, Bar, Line, LabelList,
 } from 'recharts'
-import { Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { SkeletonGastos } from '../components/Skeleton'
 import { fmt, fmtCompact as fmtC, fmtSmart } from '../lib/format'
 import { getAmount } from '../lib/currency'
 
@@ -354,7 +355,7 @@ export default function Gastos() {
     fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
   }
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: 'var(--text-muted)' }}><Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /><span>Cargando...</span></div>
+  if (loading) return <SkeletonGastos />
 
   const pillS = (active) => ({
     padding: '4px 12px', borderRadius: 16, border: '1px solid',

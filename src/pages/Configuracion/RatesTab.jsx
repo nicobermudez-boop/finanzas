@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { RefreshCw, Loader2, CheckCircle, AlertCircle, Clock } from 'lucide-react'
+import { SkeletonConfig } from '../../components/Skeleton'
 
 export default function RatesTab() {
   const [loading, setLoading] = useState(true)
@@ -46,7 +47,7 @@ export default function RatesTab() {
   const statS = { fontSize: 28, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '-0.02em' }
   const labelS = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 6 }
 
-  if (loading) return <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>Cargando...</div>
+  if (loading) return <SkeletonConfig />
 
   return (
     <div>

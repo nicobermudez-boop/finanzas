@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Check, Loader2, NotebookPen } from 'lucide-react'
+import { Plus, Trash2, Check, NotebookPen } from 'lucide-react'
+import { SkeletonList } from '../components/Skeleton'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
@@ -321,9 +322,7 @@ export default function Pendientes() {
 
         {/* States */}
         {loading ? (
-          <div style={styles.center}>
-            <Loader2 size={22} color="var(--text-muted)" style={{ animation: 'spin 1s linear infinite' }} />
-          </div>
+          <SkeletonList />
         ) : error ? (
           <div style={styles.center}>
             <p style={styles.errorText}>{error}</p>
