@@ -69,10 +69,10 @@ export default function Detallado() {
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = usePersistedState('finanzas-filter-detallado-currency', 'ARS')
   const [monthRange, setMonthRange] = usePersistedState('finanzas-filter-detallado-monthRange', 6)
-  const [filterCat, setFilterCat] = useState('all')
-  const [filterSubcat, setFilterSubcat] = useState('all')
-  const [filterConcept, setFilterConcept] = useState('all')
-  const [filterDesc, setFilterDesc] = useState('')
+  const [filterCat, setFilterCat] = usePersistedState('finanzas-filter-detallado-cat', 'all')
+  const [filterSubcat, setFilterSubcat] = usePersistedState('finanzas-filter-detallado-subcat', 'all')
+  const [filterConcept, setFilterConcept] = usePersistedState('finanzas-filter-detallado-concept', 'all')
+  const [filterDesc, setFilterDesc] = usePersistedState('finanzas-filter-detallado-desc', '')
   const [sortCol, setSortCol] = useState('total')
   const [sortDir, setSortDir] = useState('desc')
 
@@ -146,6 +146,8 @@ export default function Detallado() {
   // Filter change handlers (reset dependent filters)
   const handleFilterCat = (v) => { setFilterCat(v); setFilterSubcat('all'); setFilterConcept('all') }
   const handleFilterSubcat = (v) => { setFilterSubcat(v); setFilterConcept('all') }
+  const hasFilters = filterCat !== 'all' || filterSubcat !== 'all' || filterConcept !== 'all' || filterDesc !== ''
+  const clearFilters = () => { setFilterCat('all'); setFilterSubcat('all'); setFilterConcept('all'); setFilterDesc('') }
 
   // Determine which hierarchy columns are visible (hide filtered ones)
   const showCatCol = filterCat === 'all'
@@ -293,6 +295,13 @@ export default function Detallado() {
                 }}
               />
             </div>
+            {hasFilters && (
+              <button onClick={clearFilters} style={{
+                padding: '6px 12px', background: 'none', border: '1px solid var(--color-expense-border)',
+                borderRadius: 'var(--radius-sm)', color: 'var(--color-expense-light)',
+                fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', alignSelf: 'flex-start',
+              }}>Limpiar filtros</button>
+            )}
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -310,6 +319,13 @@ export default function Detallado() {
                 fontSize: 13, fontFamily: 'inherit', outline: 'none', minWidth: 130,
               }}
             />
+            {hasFilters && (
+              <button onClick={clearFilters} style={{
+                padding: '7px 12px', background: 'none', border: '1px solid var(--color-expense-border)',
+                borderRadius: 'var(--radius-sm)', color: 'var(--color-expense-light)',
+                fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>Limpiar filtros</button>
+            )}
             <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)', fontFamily: "'JetBrains Mono', monospace" }}>
               {rows.length} filas
             </div>
