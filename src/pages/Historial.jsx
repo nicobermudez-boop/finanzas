@@ -77,16 +77,13 @@ export default function Historial() {
 
     if (cf.date) data = data.filter(t => (t.date || '').includes(cf.date))
     if (cf.amount) data = data.filter(t => String(t.amount || '').includes(cf.amount))
-    if (cf.category) data = data.filter(t => {
-      const name = t.type === 'income' ? (t.income_concept || '') : (catMap[t.category_id]?.name || '')
-      return name === cf.category
-    })
+    if (cf.category) data = data.filter(t => (catMap[t.category_id]?.name || '') === cf.category)
     if (cf.subcategory) data = data.filter(t => {
-      const name = t.type === 'income' ? (t.income_subtype || '') : (subMap[t.subcategory_id]?.name || '')
+      const name = t.type === 'income' ? (t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')
       return name === cf.subcategory
     })
     if (cf.concept) data = data.filter(t => {
-      const name = conMap[t.concept_id]?.name || ''
+      const name = t.type === 'income' ? (t.income_subtype || '') : (conMap[t.concept_id]?.name || '')
       return name === cf.concept
     })
     if (cf.description) data = data.filter(t => (t.description || '').toLowerCase().includes(cf.description.toLowerCase()))
@@ -112,15 +109,15 @@ export default function Historial() {
 
     const applyOtherFilters = (exclude) => {
       let d = data
-      if (exclude !== 'category' && cf.category) d = d.filter(t => {
-        const name = t.type === 'income' ? (t.income_concept || '') : (catMap[t.category_id]?.name || '')
-        return name === cf.category
-      })
+      if (exclude !== 'category' && cf.category) d = d.filter(t => (catMap[t.category_id]?.name || '') === cf.category)
       if (exclude !== 'subcategory' && cf.subcategory) d = d.filter(t => {
-        const name = t.type === 'income' ? (t.income_subtype || '') : (subMap[t.subcategory_id]?.name || '')
+        const name = t.type === 'income' ? (t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')
         return name === cf.subcategory
       })
-      if (exclude !== 'concept' && cf.concept) d = d.filter(t => (conMap[t.concept_id]?.name || '') === cf.concept)
+      if (exclude !== 'concept' && cf.concept) d = d.filter(t => {
+        const name = t.type === 'income' ? (t.income_subtype || '') : (conMap[t.concept_id]?.name || '')
+        return name === cf.concept
+      })
       if (exclude !== 'person' && cf.person) d = d.filter(t => (t.person || '') === cf.person)
       if (cf.date) d = d.filter(t => (t.date || '').includes(cf.date))
       if (cf.amount) d = d.filter(t => String(t.amount || '').includes(cf.amount))
@@ -134,9 +131,9 @@ export default function Historial() {
     const consData = applyOtherFilters('concept')
     const persData = applyOtherFilters('person')
 
-    const cats = [...new Set(catsData.map(t => t.type === 'income' ? (t.income_concept || '') : (catMap[t.category_id]?.name || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
-    const subs = [...new Set(subsData.map(t => t.type === 'income' ? (t.income_subtype || '') : (subMap[t.subcategory_id]?.name || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
-    const cons = [...new Set(consData.map(t => conMap[t.concept_id]?.name || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const cats = [...new Set(catsData.map(t => catMap[t.category_id]?.name || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const subs = [...new Set(subsData.map(t => t.type === 'income' ? (t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const cons = [...new Set(consData.map(t => t.type === 'income' ? (t.income_subtype || '') : (conMap[t.concept_id]?.name || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     const pers = [...new Set(persData.map(t => t.person).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     return { cats, subs, cons, pers }
   }, [transactions, tab, colFilters, catMap, subMap, conMap])
@@ -357,8 +354,8 @@ export default function Historial() {
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Fecha</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>Monto</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Categoría</th>
-                <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Subcategoría</th>
-                <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Concepto</th>
+                <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{tab === 'income' ? 'Concepto' : 'Subcategoría'}</th>
+                <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{tab === 'income' ? 'Tipo' : 'Concepto'}</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Descripción</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Persona</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>FX Rate</th>
@@ -416,9 +413,9 @@ export default function Historial() {
               {pageData.map(tx => {
                 const isEditing = editingId === tx.id
                 const isDeleting = deletingId === tx.id
-                const catName = tx.type === 'income' ? (tx.income_concept || '–') : (catMap[tx.category_id]?.name || '–')
-                const subName = tx.type === 'income' ? (tx.income_subtype || '–') : (subMap[tx.subcategory_id]?.name || '–')
-                const conName = conMap[tx.concept_id]?.name || '–'
+                const catName = catMap[tx.category_id]?.name || '–'
+                const subName = tx.type === 'income' ? (tx.income_concept || '–') : (subMap[tx.subcategory_id]?.name || '–')
+                const conName = tx.type === 'income' ? (tx.income_subtype || '–') : (conMap[tx.concept_id]?.name || '–')
 
                 return (
                   <tr key={tx.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s' }}
@@ -448,22 +445,15 @@ export default function Historial() {
                     </td>
                     <td style={s.cellMuted}>
                       {isEditing ? (
-                        tx.type === 'expense' ? (
-                          <select value={editData.category_id || ''} onChange={e => {
-                            const val = e.target.value || null
-                            setEditData(p => ({ ...p, category_id: val, subcategory_id: null, concept_id: null }))
-                          }} style={s.editInput}>
-                            <option value="">–</option>
-                            {categories.filter(c => c.type === 'expense' && !c.archived).map(c => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <select value={editData.income_concept || ''} onChange={e => setEditData(p => ({ ...p, income_concept: e.target.value || null }))} style={s.editInput}>
-                            <option value="">–</option>
-                            {INCOME_CONCEPTS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
-                          </select>
-                        )
+                        <select value={editData.category_id || ''} onChange={e => {
+                          const val = e.target.value || null
+                          setEditData(p => ({ ...p, category_id: val, subcategory_id: null, concept_id: null }))
+                        }} style={s.editInput}>
+                          <option value="">–</option>
+                          {categories.filter(c => c.type === tab && !c.archived).map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
                       ) : catName}
                     </td>
                     <td style={s.cellMuted}>
@@ -479,10 +469,9 @@ export default function Historial() {
                             ))}
                           </select>
                         ) : (
-                          <select value={editData.income_subtype || ''} onChange={e => setEditData(p => ({ ...p, income_subtype: e.target.value || null }))} style={s.editInput}>
+                          <select value={editData.income_concept || ''} onChange={e => setEditData(p => ({ ...p, income_concept: e.target.value || null }))} style={s.editInput}>
                             <option value="">–</option>
-                            <option value="recurrente">Recurrente</option>
-                            <option value="extraordinario">Extraordinario</option>
+                            {INCOME_CONCEPTS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
                           </select>
                         )
                       ) : subName}
@@ -497,7 +486,11 @@ export default function Historial() {
                             ))}
                           </select>
                         ) : (
-                          <input type="text" value={editData.description} onChange={e => setEditData(p => ({ ...p, description: e.target.value }))} placeholder="Descripción..." style={s.editInput} />
+                          <select value={editData.income_subtype || ''} onChange={e => setEditData(p => ({ ...p, income_subtype: e.target.value || null }))} style={s.editInput}>
+                            <option value="">–</option>
+                            <option value="recurrente">Recurrente</option>
+                            <option value="extraordinario">Extraordinario</option>
+                          </select>
                         )
                       ) : conName}
                     </td>

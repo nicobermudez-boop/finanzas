@@ -667,9 +667,9 @@ export default function Carga() {
   )
 
   return (
-    <div className="app" style={isMobile ? { height: 'auto', overflowY: 'visible' } : { display: 'grid', gridTemplateColumns: '1fr 360px', height: '100%', overflow: 'hidden' }}>
+    <div className="app" style={isMobile ? { height: 'auto', overflowY: 'visible' } : { display: 'grid', gridTemplateColumns: '1fr 380px', maxWidth: 'none', height: '100%', overflow: 'hidden' }}>
       {isMobile ? formContent : (
-        <div style={{ overflow: 'auto' }}>
+        <div style={{ overflow: 'auto', maxWidth: 560, margin: '0 auto', width: '100%' }}>
           {formContent}
         </div>
       )}

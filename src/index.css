@@ -230,9 +230,11 @@ select { color-scheme: inherit; }
 .p.s{border-color:var(--color-accent);color:var(--color-accent);background:var(--color-accent-bg)}
 
 .cg{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+@media(min-width:769px){.cg{grid-template-columns:repeat(3,1fr);gap:8px}}
 .cc{padding:10px 8px;border-radius:var(--radius-sm);border:1.5px solid var(--border-default);background:var(--bg-secondary);cursor:pointer;transition:all .2s;text-align:center;font-family:inherit}
 .cc:hover{border-color:var(--text-muted)}.cc.s{border-color:var(--color-accent);background:var(--color-accent-bg)}
 .ci{font-size:20px;margin-bottom:2px}.cn{font-size:11px;font-weight:500;color:var(--text-secondary);line-height:1.2}
+@media(min-width:769px){.cn{font-size:12px}}
 .cc.s .cn{color:var(--color-accent)}
 
 .inp{width:100%;padding:11px 14px;background:var(--bg-card);border:1.5px solid var(--border-default);border-radius:var(--radius-sm);color:var(--text-primary);font-size:14px;outline:none;transition:all .2s;font-family:inherit}
