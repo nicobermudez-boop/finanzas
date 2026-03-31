@@ -479,8 +479,8 @@ export default function Carga() {
     )
   }
 
-  return (
-    <div className="app" style={isMobile ? { height: 'auto', overflowY: 'visible' } : undefined}>
+  const formContent = (
+    <>
       {/* HEADER */}
       <div className="hdr" style={isMobile ? { position: 'relative', top: 'auto' } : undefined}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -662,8 +662,22 @@ export default function Carga() {
         </button>
       </div>
 
-      {/* RECENT */}
-      <RecentTransactions transactions={recent} onRepeat={handleRepeat} />
+      {isMobile && <RecentTransactions transactions={recent} onRepeat={handleRepeat} />}
+    </>
+  )
+
+  return (
+    <div className="app" style={isMobile ? { height: 'auto', overflowY: 'visible' } : { display: 'grid', gridTemplateColumns: '1fr 360px', height: '100%', overflow: 'hidden' }}>
+      {isMobile ? formContent : (
+        <div style={{ overflow: 'auto' }}>
+          {formContent}
+        </div>
+      )}
+      {!isMobile && (
+        <div style={{ overflow: 'auto', borderLeft: '1px solid var(--border-subtle)', padding: '16px 20px' }}>
+          <RecentTransactions transactions={recent} onRepeat={handleRepeat} />
+        </div>
+      )}
 
       {toast && (
         <div className={`toast ${toast.type}${toastExit ? ' toast-exit' : ''}`}>

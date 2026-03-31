@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   Sun,
   Moon,
-  Monitor,
+  SunMoon,
   ClipboardList,
   Settings,
   LayoutDashboard,
@@ -35,20 +35,25 @@ const navSections = [
       { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/evolucion', label: 'Evolución', icon: TrendingUp },
       { path: '/gastos', label: 'Gastos', icon: Search },
+    ]
+  },
+  {
+    label: 'Historial',
+    items: [
+      { path: '/historial', label: 'Historial', icon: ClipboardList },
       { path: '/detallado', label: 'Detallado', icon: Table2 },
     ]
   },
   {
     label: 'Ajustes',
     items: [
-      { path: '/historial', label: 'Historial', icon: ClipboardList },
-      { path: '/configuracion', label: 'Config', icon: Settings },
+      { path: '/configuracion', label: 'Configuración', icon: Settings },
     ]
   },
 ]
 
 const themeConfig = {
-  auto: { icon: Monitor, label: 'Auto', next: 'light' },
+  auto: { icon: SunMoon, label: 'Auto', next: 'light' },
   light: { icon: Sun, label: 'Claro', next: 'dark' },
   dark: { icon: Moon, label: 'Oscuro', next: 'auto' },
 }

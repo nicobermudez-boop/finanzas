@@ -259,7 +259,7 @@ export default function Gastos() {
       })
       entry._total = Math.round(mTotal)
       const mInc = curI.filter(t => { const td = new Date(t.date + 'T00:00:00'); return td.getFullYear() === y && td.getMonth() === m }).reduce((s, t) => s + getAmount(t, currency), 0)
-      entry['% Ingresos'] = mInc > 0 ? Math.round((mTotal / mInc) * 100) : 0
+      entry['% Ingresos'] = mInc > 0 ? Math.round((mTotal / mInc) * 1000) / 10 : 0
       return entry
     })
 
@@ -543,17 +543,31 @@ export default function Gastos() {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {distData.slice(0, 12).map((d, i) => (
-                <div key={i}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 12 }}>
-                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{d.name}</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)', fontWeight: 500, fontSize: 11 }}>{H(fmtSmart(d.value, currency))} <span style={{ color: 'var(--text-dim)' }}>({d.pct.toFixed(0)}%)</span></span>
+              {(() => {
+                const MAX_DIST = 14
+                const displayDist = distData.length <= MAX_DIST + 1
+                  ? distData
+                  : [
+                      ...distData.slice(0, MAX_DIST),
+                      {
+                        name: 'Otros',
+                        value: distData.slice(MAX_DIST).reduce((s, d) => s + d.value, 0),
+                        pct: distData.slice(MAX_DIST).reduce((s, d) => s + d.pct, 0),
+                        _isOtros: true,
+                      }
+                    ]
+                return displayDist.map((d, i) => (
+                  <div key={d._isOtros ? '_otros' : i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{d.name}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)', fontWeight: 500, fontSize: 11 }}>{H(fmtSmart(d.value, currency))} <span style={{ color: 'var(--text-dim)' }}>({d.pct.toFixed(0)}%)</span></span>
+                    </div>
+                    <div style={{ width: '100%', height: 6, background: 'var(--bg-tertiary)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${d.pct}%`, height: '100%', background: d._isOtros ? '#94a3b8' : (chartColors[d.name] || COLORS[i % COLORS.length]), borderRadius: 3, transition: 'width 0.3s ease' }} />
+                    </div>
                   </div>
-                  <div style={{ width: '100%', height: 6, background: 'var(--bg-tertiary)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${d.pct}%`, height: '100%', background: COLORS[i % COLORS.length], borderRadius: 3, transition: 'width 0.3s ease' }} />
-                  </div>
-                </div>
-              ))}
+                ))
+              })()}
             </div>
           </div>
 
