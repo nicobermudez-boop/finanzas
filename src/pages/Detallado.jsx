@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
@@ -66,8 +67,8 @@ export default function Detallado() {
   const [subcategories, setSubcategories] = useState([])
   const [concepts, setConcepts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [currency, setCurrency] = useState('ARS')
-  const [monthRange, setMonthRange] = useState(6)
+  const [currency, setCurrency] = usePersistedState('finanzas-filter-detallado-currency', 'ARS')
+  const [monthRange, setMonthRange] = usePersistedState('finanzas-filter-detallado-monthRange', 6)
   const [filterCat, setFilterCat] = useState('all')
   const [filterSubcat, setFilterSubcat] = useState('all')
   const [filterConcept, setFilterConcept] = useState('all')

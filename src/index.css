@@ -153,6 +153,10 @@ svg {
   from { opacity: 0; transform: translateX(-12px); }
   to { opacity: 1; transform: translateX(0); }
 }
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -166,10 +170,27 @@ svg {
   from { transform: translate(-50%, 16px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
 }
+@keyframes toastOut {
+  from { transform: translate(-50%, 0); opacity: 1; }
+  to { transform: translate(-50%, 12px); opacity: 0; }
+}
 
 .animate-fade-in { animation: fadeIn 0.3s ease-out; }
 .sec-in { animation: secIn 0.18s ease; }
+.list-item-enter { animation: slideInLeft 0.2s ease-out; }
 .mono { font-family: var(--font-mono); }
+
+/* Spinner inside submit button */
+.sb-spin {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.sb-spin-white { border-color: rgba(255,255,255,0.4); border-top-color: #fff; }
 
 select { color-scheme: inherit; }
 
@@ -248,8 +269,9 @@ select { color-scheme: inherit; }
 .sb.income{background:var(--color-income);color:#0a0a0f}.sb.income:hover{box-shadow:0 4px 20px rgba(52,211,153,.25)}
 .sb:disabled{opacity:.35;cursor:not-allowed}.sb:active:not(:disabled){transform:scale(.98)}
 
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:var(--radius-md);font-size:14px;font-weight:600;z-index:100;animation:ti .3s ease;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:var(--radius-md);font-size:14px;font-weight:600;z-index:100;animation:ti .3s ease;box-shadow:0 8px 32px rgba(0,0,0,.4);white-space:nowrap}
 .toast.expense{background:var(--color-expense);color:#fff}.toast.income{background:var(--color-income);color:#0a0a0f}.toast.error{background:var(--color-expense);color:#fff}
+.toast.toast-exit{animation:toastOut .35s ease forwards}
 
 .rs{padding:0 20px;margin-top:28px}
 .rt{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:10px}

@@ -1,6 +1,45 @@
 import { supabase } from './supabase'
 import { getExchangeRate } from './exchangeRate'
 
+// Pure function: calculates the preview rows without touching the DB.
+// Returns { type: 'simple'|'installments'|'recurring', items: [{ date, amount, number }] }
+export function previewTransaction(tx) {
+  const baseDate = new Date(tx.date + 'T12:00:00')
+
+  if (tx.paymentMethod === 'Crédito' && tx.installments > 1) {
+    const installmentAmount = Math.round((tx.amount / tx.installments) * 100) / 100
+    return {
+      type: 'installments',
+      items: Array.from({ length: tx.installments }, (_, i) => {
+        const d = new Date(baseDate)
+        d.setMonth(d.getMonth() + i)
+        return { date: d.toISOString().slice(0, 10), amount: installmentAmount, number: i + 1 }
+      }),
+    }
+  }
+
+  if (tx.isRecurring && tx.recurrenceFrequency && tx.recurrencePeriods > 1) {
+    return {
+      type: 'recurring',
+      items: Array.from({ length: tx.recurrencePeriods }, (_, i) => {
+        const d = new Date(baseDate)
+        switch (tx.recurrenceFrequency) {
+          case 'monthly': d.setMonth(d.getMonth() + i); break
+          case 'weekly': d.setDate(d.getDate() + i * 7); break
+          case 'biweekly': d.setDate(d.getDate() + i * 14); break
+          case 'yearly': d.setFullYear(d.getFullYear() + i); break
+        }
+        return { date: d.toISOString().slice(0, 10), amount: tx.amount, number: i + 1 }
+      }),
+    }
+  }
+
+  return {
+    type: 'simple',
+    items: [{ date: tx.date, amount: tx.amount, number: 1 }],
+  }
+}
+
 // Create a transaction (handles installments + recurrence)
 export async function createTransaction(tx, userId) {
   const baseDate = new Date(tx.date + 'T12:00:00')

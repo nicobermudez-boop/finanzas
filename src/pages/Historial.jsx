@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { supabase } from '../lib/supabase'
 import { getExchangeRate } from '../lib/exchangeRate'
 import { useAuth } from '../context/AuthContext'
@@ -29,7 +30,7 @@ export default function Historial() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [toast, setToast] = useState(null)
-  const [tab, setTab] = useState('expense')
+  const [tab, setTab] = usePersistedState('finanzas-filter-historial-tab', 'expense')
   const [page, setPage] = useState(0)
   const [editingId, setEditingId] = useState(null)
   const [editData, setEditData] = useState({})

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
 import { usePrivacy } from '../context/PrivacyContext'
@@ -48,10 +49,10 @@ export default function Evolucion() {
   const isMobile = useIsMobile()
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [currency, setCurrency] = useState('ARS')
-  const [view, setView] = useState('gastos')
-  const [excludeViajes, setExcludeViajes] = useState(false)
-  const [excludeExtra, setExcludeExtra] = useState(false)
+  const [currency, setCurrency] = usePersistedState('finanzas-filter-evolucion-currency', 'ARS')
+  const [view, setView] = usePersistedState('finanzas-filter-evolucion-view', 'gastos')
+  const [excludeViajes, setExcludeViajes] = usePersistedState('finanzas-filter-evolucion-excludeViajes', false)
+  const [excludeExtra, setExcludeExtra] = usePersistedState('finanzas-filter-evolucion-excludeExtra', false)
 
   const [nowYear] = useState(() => new Date().getFullYear())
   const [baseYear, setBaseYear] = useState(nowYear)

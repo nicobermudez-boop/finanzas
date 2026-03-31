@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { useNavigate } from 'react-router-dom'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
@@ -49,15 +50,15 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  const [currency, setCurrency] = useState('ARS')
-  const [period, setPeriod] = useState('ytd')
+  const [currency, setCurrency] = usePersistedState('finanzas-filter-dashboard-currency', 'ARS')
+  const [period, setPeriod] = usePersistedState('finanzas-filter-dashboard-period', 'ytd')
   const [now0] = useState(() => new Date())
   const defYear = now0.getMonth() === 0 ? now0.getFullYear() - 1 : now0.getFullYear()
   const defMonth = now0.getMonth() === 0 ? 11 : now0.getMonth() - 1
   const [baseYear, setBaseYear] = useState(defYear)
   const [baseMonthIdx, setBaseMonthIdx] = useState(defMonth)
-  const [excludeViajes, setExcludeViajes] = useState(false)
-  const [excludeExtra, setExcludeExtra] = useState(false)
+  const [excludeViajes, setExcludeViajes] = usePersistedState('finanzas-filter-dashboard-excludeViajes', false)
+  const [excludeExtra, setExcludeExtra] = usePersistedState('finanzas-filter-dashboard-excludeExtra', false)
 
   async function loadData() {
     setLoading(true)

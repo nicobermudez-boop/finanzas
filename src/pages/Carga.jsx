@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { createTransaction, getRecentTransactions } from '../lib/transactions'
+import { createTransaction, previewTransaction, getRecentTransactions } from '../lib/transactions'
 import { getLatestRate } from '../lib/exchangeRate'
 import { useAuth } from '../context/AuthContext'
 import SelectionPills from '../components/SelectionPills'
@@ -28,6 +28,126 @@ const FREQS = [
   { value: 'biweekly', label: 'Quincenal' },
   { value: 'yearly', label: 'Anual' }
 ]
+
+const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+function fmtDateShort(d) {
+  const [, m, day] = d.split('-')
+  return `${day} ${MONTH_NAMES[parseInt(m, 10) - 1]}`
+}
+function fmtDateLong(d) {
+  const [y, m, day] = d.split('-')
+  return `${day}/${m}/${y}`
+}
+
+function PreviewModal({ preview, currency, catName, personName, confirming, onConfirm, onClose }) {
+  const { type, items, duplicate } = preview
+  const total = items.reduce((s, i) => s + i.amount, 0)
+  const firstDate = items[0]?.date
+  const lastDate = items[items.length - 1]?.date
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      animation: 'fadeIn 0.2s ease',
+    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{
+        width: '100%', maxWidth: 520, background: 'var(--bg-card)',
+        borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
+        padding: '20px 20px 32px', boxShadow: '0 -8px 40px rgba(0,0,0,0.3)',
+        animation: 'slideUp 0.25s ease',
+        maxHeight: '80vh', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Confirmar {type === 'installments' ? 'cuotas' : type === 'recurring' ? 'recurrencia' : 'transacción'}
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+        </div>
+
+        {duplicate && (
+          <div style={{
+            background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)',
+            borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: 14,
+            fontSize: 12, color: '#b45309', lineHeight: 1.5,
+          }}>
+            ⚠️ Ya existe una transacción similar el {fmtDateLong(duplicate.date)} por {fmt(duplicate.amount, duplicate.currency)}. Podés confirmar igual.
+          </div>
+        )}
+
+        {/* Summary line */}
+        <div style={{
+          background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)',
+          padding: '12px 14px', marginBottom: 14,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            {catName && <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{catName}</div>}
+            {personName && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{personName}</div>}
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 16, color: 'var(--color-accent)' }}>
+            {fmt(total, currency)}
+          </div>
+        </div>
+
+        {/* Item list */}
+        {(type === 'installments' || type === 'recurring') && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 2 }}>
+              {type === 'installments'
+                ? `${items.length} cuotas · ${fmtDateShort(firstDate)} → ${fmtDateShort(lastDate)}`
+                : `${items.length} períodos · ${fmtDateShort(firstDate)} → ${fmtDateShort(lastDate)}`}
+            </div>
+            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+              {items.map(item => (
+                <div key={item.number} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '7px 10px', borderRadius: 'var(--radius-sm)',
+                  background: item.number % 2 === 0 ? 'transparent' : 'var(--bg-tertiary)',
+                  fontSize: 12,
+                }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {type === 'installments' ? `Cuota ${item.number}/${items.length}` : `#${item.number}`}
+                    {' · '}{fmtDateShort(item.date)}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {fmt(item.amount, currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {type === 'simple' && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+            Fecha: {fmtDateLong(firstDate)}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} disabled={confirming} style={{
+            flex: 1, padding: '12px', border: '1.5px solid var(--border-default)',
+            background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
+            borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 600,
+            cursor: confirming ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+            opacity: confirming ? 0.5 : 1, transition: 'all 0.15s',
+          }}>Volver</button>
+          <button onClick={onConfirm} disabled={confirming} style={{
+            flex: 2, padding: '12px', border: 'none',
+            background: 'var(--color-accent)', color: '#fff',
+            borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 700,
+            cursor: confirming ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+            opacity: confirming ? 0.7 : 1, transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            {confirming ? <><span className="sb-spin sb-spin-white" />Guardando...</> : 'Confirmar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Carga() {
   const { user } = useAuth()
@@ -61,6 +181,12 @@ export default function Carga() {
   const [rFreq, setRFreq] = useState('monthly')
   const [rPer, setRPer] = useState(12)
   const [toast, setToast] = useState(null)
+  const [toastExit, setToastExit] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  // Preview modal state
+  const [preview, setPreview] = useState(null) // { type, items, duplicate }
+  const [confirming, setConfirming] = useState(false)
 
   const aRef = useRef(null)
 
@@ -233,64 +359,104 @@ export default function Carga() {
     return type === 'expense' ? conId !== null : incCon !== null
   }, [amount, type, conId, incCon, person, isRec, rPer])
 
-  const handleSubmit = async () => {
+  // Build the tx payload used both for preview and actual save
+  const buildTxPayload = useCallback(() => {
+    let incomeCategoryId = null, incomeSubcategoryId = null, incomeConceptId = null
+    if (type === 'income' && incomeCat) {
+      incomeCategoryId = incomeCat.id
+      const incSub2 = incomeCat.subcategories?.[0]
+      if (incSub2) {
+        incomeSubcategoryId = incSub2.id
+        const incCon2 = incSub2.concepts?.find(c => c.name === incCon)
+        if (incCon2) incomeConceptId = incCon2.id
+      }
+    }
+    return {
+      type,
+      date,
+      amount: Number(amount),
+      currency: cur,
+      categoryId: type === 'expense' ? catId : incomeCategoryId,
+      subcategoryId: type === 'expense' ? subId : incomeSubcategoryId,
+      conceptId: type === 'expense' ? conId : incomeConceptId,
+      incomeConcept: type === 'income' ? incCon : null,
+      incomeSubtype: type === 'income' ? incSub : null,
+      description: desc || cons.find(c => c.id === conId)?.name || incCon || null,
+      paymentMethod: type === 'expense' ? pay : null,
+      installments: type === 'expense' && pay === 'Crédito' ? inst : 1,
+      person: members.find(m => m.id === person)?.name || null,
+      personId: person,
+      destination: isV ? dest : null,
+      isRecurring: isRec,
+      recurrenceFrequency: isRec ? rFreq : null,
+      recurrencePeriods: isRec ? rPer : null,
+    }
+  }, [type, date, amount, cur, catId, subId, conId, incCon, incSub, desc, cons, pay, inst, person, members, isV, dest, isRec, rFreq, rPer, incomeCat])
+
+  const showToast = useCallback((toastObj, duration = 2500) => {
+    setToastExit(false)
+    setToast(toastObj)
+    setTimeout(() => setToastExit(true), duration - 400)
+    setTimeout(() => { setToast(null); setToastExit(false) }, duration)
+  }, [])
+
+  // Step 1: open preview modal
+  const handleSubmit = useCallback(async () => {
     if (!valid || saving) return
     setSaving(true)
-
     try {
-      // Find the income concept's category/subcategory/concept IDs
-      let incomeCategoryId = null, incomeSubcategoryId = null, incomeConceptId = null
-      if (type === 'income' && incomeCat) {
-        incomeCategoryId = incomeCat.id
-        const incSub2 = incomeCat.subcategories?.[0]
-        if (incSub2) {
-          incomeSubcategoryId = incSub2.id
-          const incCon2 = incSub2.concepts?.find(c => c.name === incCon)
-          if (incCon2) incomeConceptId = incCon2.id
+      const tx = buildTxPayload()
+      const previewData = previewTransaction(tx)
+
+      // Check for duplicates (expense with concept_id only)
+      let duplicate = null
+      if (type === 'expense' && conId) {
+        const { data: dups } = await supabase
+          .from('transactions')
+          .select('id, date, amount, currency, concepts(name)')
+          .eq('user_id', user.id)
+          .eq('date', date)
+          .eq('concept_id', conId)
+        if (dups?.length) {
+          const match = dups.find(d => Math.abs(d.amount - Number(amount)) / Number(amount) <= 0.05)
+          if (match) duplicate = match
         }
       }
 
-      await createTransaction({
-        type,
-        date,
-        amount: Number(amount),
-        currency: cur,
-        categoryId: type === 'expense' ? catId : incomeCategoryId,
-        subcategoryId: type === 'expense' ? subId : incomeSubcategoryId,
-        conceptId: type === 'expense' ? conId : incomeConceptId,
-        incomeConcept: type === 'income' ? incCon : null,
-        incomeSubtype: type === 'income' ? incSub : null,
-        description: desc || cons.find(c => c.id === conId)?.name || incCon || null,
-        paymentMethod: type === 'expense' ? pay : null,
-        installments: type === 'expense' && pay === 'Crédito' ? inst : 1,
-        person: members.find(m => m.id === person)?.name || null,
-        personId: person,
-        destination: isV ? dest : null,
-        isRecurring: isRec,
-        recurrenceFrequency: isRec ? rFreq : null,
-        recurrencePeriods: isRec ? rPer : null,
-      }, user.id)
+      setPreview({ ...previewData, duplicate, tx })
+    } catch (e) {
+      console.error('Error building preview:', e)
+    }
+    setSaving(false)
+  }, [valid, saving, buildTxPayload, type, conId, user.id, date, amount])
 
-      // Refresh recent
-      const txs = await getRecentTransactions(user.id)
+  // Step 2: confirm and save
+  const handleConfirm = useCallback(async () => {
+    if (!preview || confirming) return
+    setConfirming(true)
+    try {
+      await createTransaction(preview.tx, user.id)
+
+      const [txs, rate] = await Promise.all([
+        getRecentTransactions(user.id),
+        getLatestRate(),
+      ])
       setRecent(txs || [])
-
-      // Refresh MEP
-      const rate = await getLatestRate()
       if (rate) setMepRate(rate)
 
-      setToast({ type, msg: `${type === 'expense' ? 'Gasto' : 'Ingreso'} registrado: ${fmt(Number(amount), cur)}` })
-      setTimeout(() => setToast(null), 2500)
+      setPreview(null)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 1500)
+      showToast({ type, msg: `${type === 'expense' ? 'Gasto' : 'Ingreso'} registrado: ${fmt(Number(amount), cur)}` })
       reset()
       setTimeout(() => aRef.current?.focus(), 100)
     } catch (e) {
       console.error('Error saving:', e)
-      setToast({ type: 'error', msg: `Error: ${e.message}` })
-      setTimeout(() => setToast(null), 3000)
+      setPreview(null)
+      showToast({ type: 'error', msg: `Error: ${e.message}` }, 3000)
     }
-
-    setSaving(false)
-  }
+    setConfirming(false)
+  }, [preview, confirming, user.id, type, amount, cur, showToast, reset])
 
   const selCat = (id) => { setCatId(id); setSubId(null); setConId(null); setTimeout(() => aRef.current?.focus(), 50) }
 
@@ -483,15 +649,38 @@ export default function Carga() {
       {/* SUBMIT */}
       <div className="sa">
         <button className={`sb ${type}`} disabled={!valid || saving} onClick={handleSubmit}>
-          {saving ? 'Guardando...' : type === 'expense' ? 'Registrar Gasto' : 'Registrar Ingreso'}
-          {!saving && amount && valid && ` · ${fmt(Number(amount), cur)}`}
+          {saving
+            ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span className="sb-spin" />Verificando...
+              </span>
+            : saved
+            ? <span>✓ Registrado</span>
+            : <>
+                {type === 'expense' ? 'Registrar Gasto' : 'Registrar Ingreso'}
+                {amount && valid && ` · ${fmt(Number(amount), cur)}`}
+              </>}
         </button>
       </div>
 
       {/* RECENT */}
       <RecentTransactions transactions={recent} onRepeat={handleRepeat} />
 
-      {toast && <div className={`toast ${toast.type}`}>{toast.type === 'error' ? '✗' : '✓'} {toast.msg}</div>}
+      {toast && (
+        <div className={`toast ${toast.type}${toastExit ? ' toast-exit' : ''}`}>
+          {toast.type === 'error' ? '✗' : '✓'} {toast.msg}
+        </div>
+      )}
+
+      {/* PREVIEW MODAL */}
+      {preview && <PreviewModal
+        preview={preview}
+        currency={cur}
+        catName={cat?.name || incCon}
+        personName={members.find(m => m.id === person)?.name}
+        confirming={confirming}
+        onConfirm={handleConfirm}
+        onClose={() => setPreview(null)}
+      />}
     </div>
   )
 }

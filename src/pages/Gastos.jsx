@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { supabase } from '../lib/supabase'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import CurrencyToggle from '../components/CurrencyToggle'
@@ -81,18 +82,18 @@ export default function Gastos() {
   const [subcategories, setSubcategories] = useState([])
   const [concepts, setConcepts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [currency, setCurrency] = useState('ARS')
-  const [period, setPeriod] = useState('ytd')
+  const [currency, setCurrency] = usePersistedState('finanzas-filter-gastos-currency', 'ARS')
+  const [period, setPeriod] = usePersistedState('finanzas-filter-gastos-period', 'ytd')
   const [now0] = useState(() => new Date())
   const defYear = now0.getMonth() === 0 ? now0.getFullYear() - 1 : now0.getFullYear()
   const defMonth = now0.getMonth() === 0 ? 11 : now0.getMonth() - 1
   const [baseYear, setBaseYear] = useState(defYear)
   const [baseMonthIdx, setBaseMonthIdx] = useState(defMonth)
-  const [excludeExtra, setExcludeExtra] = useState(false)
-  const [excludeViajes, setExcludeViajes] = useState(false)
-  const [distGroup, setDistGroup] = useState('category')
-  const [tableGroup, setTableGroup] = useState('concept')
-  const [compareMode, setCompareMode] = useState('ya') // 'ya' or 'prev'
+  const [excludeExtra, setExcludeExtra] = usePersistedState('finanzas-filter-gastos-excludeExtra', false)
+  const [excludeViajes, setExcludeViajes] = usePersistedState('finanzas-filter-gastos-excludeViajes', false)
+  const [distGroup, setDistGroup] = usePersistedState('finanzas-filter-gastos-distGroup', 'category')
+  const [tableGroup, setTableGroup] = usePersistedState('finanzas-filter-gastos-tableGroup', 'concept')
+  const [compareMode, setCompareMode] = usePersistedState('finanzas-filter-gastos-compareMode', 'ya')
   const [filterCats, setFilterCats] = useState([])
   const [filterSubs, setFilterSubs] = useState([])
   const [filterCons, setFilterCons] = useState([])
