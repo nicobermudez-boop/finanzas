@@ -3,7 +3,7 @@ import { usePersistedState } from '../hooks/usePersistedState'
 import { supabase } from '../lib/supabase'
 import { getExchangeRate } from '../lib/exchangeRate'
 import { useAuth } from '../context/AuthContext'
-import { Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight, ListChecks } from 'lucide-react'
 import { SkeletonTable } from '../components/Skeleton'
 import useIsMobile from '../hooks/useIsMobile'
 import { fetchAllTransactions } from '../lib/fetchAll'
@@ -32,8 +32,11 @@ export default function Historial() {
   const [page, setPage] = useState(0)
   const [editingId, setEditingId] = useState(null)
   const [editData, setEditData] = useState({})
-  const [deletingId, setDeletingId] = useState(null)
-  const [saving, setSaving] = useState(false)
+  const [bulkMode, setBulkMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkData, setBulkData] = useState({})
+  const [confirmAction, setConfirmAction] = useState(null)
+  const [confirming, setConfirming] = useState(false)
   const [colFilters, setColFilters] = useState({
     date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '',
   })
@@ -105,7 +108,7 @@ export default function Historial() {
   )
 
   // Reset page and filters on tab change
-  useEffect(() => { setPage(0); setColFilters({ date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '' }) }, [tab])
+  useEffect(() => { setPage(0); setColFilters({ date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '' }); setBulkMode(false); setSelectedIds(new Set()); setBulkData({}) }, [tab])
 
   // Unique values for dropdowns — based on data filtered by OTHER filters (not own column)
   const uniqueVals = useMemo(() => {
@@ -143,6 +146,63 @@ export default function Historial() {
     return { cats, subs, cons, pers }
   }, [transactions, tab, colFilters, catMap, subMap, conMap])
 
+  // Bulk mode helpers
+  const toggleBulkMode = () => {
+    if (bulkMode) { setSelectedIds(new Set()); setBulkData({}) }
+    setBulkMode(prev => !prev)
+  }
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    const allIds = filtered.map(t => t.id)
+    const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id))
+    setSelectedIds(allSelected ? new Set() : new Set(allIds))
+  }
+
+  const setBulkField = (key, value) => {
+    setBulkData(prev => {
+      const next = { ...prev }
+      if (value === '' || value === null || value === undefined) delete next[key]
+      else next[key] = value
+      return next
+    })
+  }
+
+  const setBulkCategory = (catId) => {
+    setBulkData(prev => {
+      const next = { ...prev }
+      if (catId) next.category_id = catId; else delete next.category_id
+      delete next.subcategory_id; delete next.concept_id
+      return next
+    })
+  }
+
+  const setBulkSubcategory = (subId) => {
+    setBulkData(prev => {
+      const next = { ...prev }
+      if (subId) next.subcategory_id = subId; else delete next.subcategory_id
+      delete next.concept_id
+      return next
+    })
+  }
+
+  const bulkSubcats = useMemo(() => {
+    if (!bulkData.category_id) return []
+    return subcategories.filter(sc => sc.category_id === bulkData.category_id && !sc.archived)
+  }, [bulkData.category_id, subcategories])
+
+  const bulkConcepts = useMemo(() => {
+    if (!bulkData.subcategory_id) return []
+    return concepts.filter(c => c.subcategory_id === bulkData.subcategory_id && !c.archived)
+  }, [bulkData.subcategory_id, concepts])
+
   // Edit handlers
   const startEdit = (tx) => {
     setEditingId(tx.id)
@@ -165,7 +225,6 @@ export default function Historial() {
   }
 
   const saveEdit = async (id) => {
-    setSaving(true)
     const amount = parseFloat(editData.amount)
     const personName = persons.find(p => p.id === editData.person_id)?.name || null
 
@@ -210,14 +269,11 @@ export default function Historial() {
       setEditingId(null)
     } else {
       console.error('Error saving edit:', error)
-      setToast({ type: 'error', msg: 'Error al guardar los cambios.' })
-      setTimeout(() => setToast(null), 3000)
+      throw error
     }
-    setSaving(false)
   }
 
   const confirmDelete = async (id) => {
-    setSaving(true)
     const { error } = await supabase
       .from('transactions')
       .delete()
@@ -225,13 +281,132 @@ export default function Historial() {
 
     if (!error) {
       setTransactions(prev => prev.filter(t => t.id !== id))
-      setDeletingId(null)
     } else {
       console.error('Error deleting transaction:', error)
-      setToast({ type: 'error', msg: 'Error al eliminar la transacción.' })
+      throw error
+    }
+  }
+
+  // Confirmation flow
+  const fieldLabel = (key) => {
+    const labels = { date: 'Fecha', amount: 'Monto', currency: 'Moneda', category_id: 'Categoría', subcategory_id: 'Subcategoría', concept_id: 'Concepto', description: 'Descripción', person_id: 'Persona', income_concept: 'Concepto', income_subtype: 'Tipo' }
+    return labels[key] || key
+  }
+
+  const resolveValue = (key, val) => {
+    if (!val) return '–'
+    if (key === 'category_id') return catMap[val]?.name || '–'
+    if (key === 'subcategory_id') return subMap[val]?.name || '–'
+    if (key === 'concept_id') return conMap[val]?.name || '–'
+    if (key === 'person_id') return persons.find(p => p.id === val)?.name || '–'
+    if (key === 'date') return fmtDate(val)
+    if (key === 'amount') return fmt(parseFloat(val))
+    return String(val)
+  }
+
+  const requestSaveEdit = (id) => {
+    const original = transactions.find(t => t.id === id)
+    const fields = ['date', 'amount', 'currency', 'category_id', 'subcategory_id', 'concept_id', 'description', 'person_id', 'income_concept', 'income_subtype']
+    const changes = {}
+    for (const f of fields) {
+      const oldVal = original[f] ?? ''
+      const newVal = editData[f] ?? ''
+      if (String(oldVal) !== String(newVal)) {
+        changes[f] = { from: resolveValue(f, oldVal), to: resolveValue(f, newVal) }
+      }
+    }
+    if (Object.keys(changes).length === 0) { cancelEdit(); return }
+    setConfirmAction({ mode: 'edit', id, changes })
+  }
+
+  const requestDelete = (tx) => {
+    setConfirmAction({ mode: 'delete', tx })
+  }
+
+  const requestBulkEdit = () => {
+    const fieldCount = Object.keys(bulkData).length
+    if (fieldCount === 0 || selectedIds.size === 0) return
+    const fields = {}
+    if (bulkData.category_id) fields['Categoría'] = catMap[bulkData.category_id]?.name
+    if (bulkData.subcategory_id) fields['Subcategoría'] = subMap[bulkData.subcategory_id]?.name
+    if (bulkData.concept_id) fields['Concepto'] = conMap[bulkData.concept_id]?.name
+    if (bulkData.description !== undefined) fields['Descripción'] = bulkData.description || '(vacío)'
+    if (bulkData.person_id) fields['Persona'] = persons.find(p => p.id === bulkData.person_id)?.name
+    if (bulkData.income_concept) fields['Concepto'] = bulkData.income_concept
+    if (bulkData.income_subtype) fields['Tipo'] = bulkData.income_subtype
+    const ids = [...selectedIds].filter(id => filtered.some(t => t.id === id))
+    setConfirmAction({ mode: 'bulk', ids, fields, bulkData: { ...bulkData } })
+  }
+
+  const requestBulkDelete = () => {
+    if (selectedIds.size === 0) return
+    const ids = [...selectedIds].filter(id => filtered.some(t => t.id === id))
+    setConfirmAction({ mode: 'bulkDelete', ids })
+  }
+
+  const executeBulkEdit = async (ids, data) => {
+    const updatePayload = {}
+    if (data.category_id) {
+      updatePayload.category_id = data.category_id
+      if (!data.subcategory_id) updatePayload.subcategory_id = null
+      if (!data.concept_id) updatePayload.concept_id = null
+    }
+    if (data.subcategory_id) {
+      updatePayload.subcategory_id = data.subcategory_id
+      if (!data.concept_id) updatePayload.concept_id = null
+    }
+    if (data.concept_id) updatePayload.concept_id = data.concept_id
+    if (data.description !== undefined) updatePayload.description = data.description || null
+    if (data.person_id) {
+      updatePayload.person_id = data.person_id
+      updatePayload.person = persons.find(p => p.id === data.person_id)?.name || null
+    }
+    if (data.income_concept) updatePayload.income_concept = data.income_concept
+    if (data.income_subtype) updatePayload.income_subtype = data.income_subtype
+
+    const BATCH = 100
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const batch = ids.slice(i, i + BATCH)
+      const { error } = await supabase.from('transactions').update(updatePayload).in('id', batch)
+      if (error) throw error
+    }
+    setTransactions(prev => prev.map(t => ids.includes(t.id) ? { ...t, ...updatePayload } : t))
+    setSelectedIds(new Set()); setBulkData({})
+  }
+
+  const executeBulkDelete = async (ids) => {
+    const BATCH = 100
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const batch = ids.slice(i, i + BATCH)
+      const { error } = await supabase.from('transactions').delete().in('id', batch)
+      if (error) throw error
+    }
+    setTransactions(prev => prev.filter(t => !ids.includes(t.id)))
+    setSelectedIds(new Set()); setBulkData({})
+  }
+
+  const executeConfirm = async () => {
+    setConfirming(true)
+    try {
+      if (confirmAction.mode === 'edit') {
+        await saveEdit(confirmAction.id)
+      } else if (confirmAction.mode === 'delete') {
+        await confirmDelete(confirmAction.tx.id)
+      } else if (confirmAction.mode === 'bulk') {
+        await executeBulkEdit(confirmAction.ids, confirmAction.bulkData)
+      } else if (confirmAction.mode === 'bulkDelete') {
+        await executeBulkDelete(confirmAction.ids)
+      }
+      setConfirmAction(null)
+      const successMsgs = { edit: 'Cambios guardados.', delete: 'Transacción eliminada.', bulk: `${confirmAction.ids?.length} transacciones actualizadas.`, bulkDelete: `${confirmAction.ids?.length} transacciones eliminadas.` }
+      setToast({ type: confirmAction.mode === 'delete' || confirmAction.mode === 'bulkDelete' ? 'expense' : 'income', msg: successMsgs[confirmAction.mode] })
+      setTimeout(() => setToast(null), 3000)
+    } catch (e) {
+      console.error('Confirmation error:', e)
+      setToast({ type: 'error', msg: 'Error al procesar la operación.' })
       setTimeout(() => setToast(null), 3000)
     }
-    setSaving(false)
+    setConfirming(false)
   }
 
   // CSV Export
@@ -330,30 +505,120 @@ export default function Historial() {
               }}
             >Ingresos ({transactions.filter(t => t.type === 'income').length})</button>
           </div>
-          {/* Export button */}
-          <button
-            onClick={exportCSV}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '7px 14px', borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-subtle)', background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-              whiteSpace: 'nowrap', flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-          >
-            <Download size={14} /> {isMobile ? 'CSV' : 'Exportar CSV'}
-          </button>
+          {/* Bulk + Export buttons */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+            <button
+              onClick={toggleBulkMode}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 'var(--radius-sm)',
+                border: `1px solid ${bulkMode ? 'var(--color-accent)' : 'var(--border-subtle)'}`,
+                background: bulkMode ? 'var(--color-accent-bg)' : 'var(--bg-tertiary)',
+                color: bulkMode ? 'var(--color-accent)' : 'var(--text-secondary)',
+                fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <ListChecks size={14} /> {isMobile ? '' : (bulkMode ? 'Cancelar' : 'Seleccionar')}
+            </button>
+            <button
+              onClick={exportCSV}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-subtle)', background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              <Download size={14} /> {isMobile ? 'CSV' : 'Exportar CSV'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Bulk edit bar */}
+      {bulkMode && selectedIds.size > 0 && (
+        <div style={{
+          padding: '10px 16px', background: 'var(--color-accent-bg)',
+          borderBottom: '1px solid var(--border-subtle)',
+          display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', marginRight: 4, whiteSpace: 'nowrap' }}>
+            {[...selectedIds].filter(id => filtered.some(t => t.id === id)).length} seleccionados
+          </span>
+
+          {tab === 'expense' && <>
+            <select value={bulkData.category_id || ''} onChange={e => setBulkCategory(e.target.value || null)} style={{ ...s.filterSelect, width: 'auto', minWidth: 100 }}>
+              <option value="">Categoría...</option>
+              {categories.filter(c => c.type === 'expense' && !c.archived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select value={bulkData.subcategory_id || ''} onChange={e => setBulkSubcategory(e.target.value || null)} disabled={!bulkData.category_id} style={{ ...s.filterSelect, width: 'auto', minWidth: 100 }}>
+              <option value="">Subcategoría...</option>
+              {bulkSubcats.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+            </select>
+            <select value={bulkData.concept_id || ''} onChange={e => setBulkField('concept_id', e.target.value || null)} disabled={!bulkData.subcategory_id} style={{ ...s.filterSelect, width: 'auto', minWidth: 100 }}>
+              <option value="">Concepto...</option>
+              {bulkConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </>}
+
+          {tab === 'income' && <>
+            <select value={bulkData.category_id || ''} onChange={e => setBulkCategory(e.target.value || null)} style={{ ...s.filterSelect, width: 'auto', minWidth: 100 }}>
+              <option value="">Categoría...</option>
+              {categories.filter(c => c.type === 'income' && !c.archived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select value={bulkData.income_concept || ''} onChange={e => setBulkField('income_concept', e.target.value || null)} style={{ ...s.filterSelect, width: 'auto', minWidth: 100 }}>
+              <option value="">Concepto...</option>
+              {INCOME_CONCEPTS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
+            </select>
+            <select value={bulkData.income_subtype || ''} onChange={e => setBulkField('income_subtype', e.target.value || null)} style={{ ...s.filterSelect, width: 'auto', minWidth: 100 }}>
+              <option value="">Tipo...</option>
+              <option value="recurrente">Recurrente</option>
+              <option value="extraordinario">Extraordinario</option>
+            </select>
+          </>}
+
+          <input type="text" value={bulkData.description ?? ''} onChange={e => setBulkField('description', e.target.value)} placeholder="Descripción..." style={{ ...s.filterInput, width: 'auto', minWidth: 100, maxWidth: 160 }} />
+          <select value={bulkData.person_id || ''} onChange={e => setBulkField('person_id', e.target.value || null)} style={{ ...s.filterSelect, width: 'auto', minWidth: 100 }}>
+            <option value="">Persona...</option>
+            {persons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button onClick={requestBulkDelete} style={{
+              padding: '5px 14px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--color-expense-bg)', color: 'var(--color-expense)',
+              border: '1px solid var(--color-expense-border)', fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              <Trash2 size={12} style={{ marginRight: 4, verticalAlign: -1 }} />Eliminar
+            </button>
+            <button onClick={requestBulkEdit} disabled={Object.keys(bulkData).length === 0} style={{
+              padding: '5px 14px', borderRadius: 'var(--radius-sm)',
+              background: Object.keys(bulkData).length > 0 ? 'var(--color-accent)' : 'var(--bg-tertiary)',
+              color: Object.keys(bulkData).length > 0 ? '#fff' : 'var(--text-dim)',
+              border: 'none', fontSize: 12, fontWeight: 600,
+              cursor: Object.keys(bulkData).length > 0 ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+            }}>Aplicar</button>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div style={{ flex: 1, overflow: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg-secondary)', borderBottom: '2px solid var(--border-strong)' }}>
+                {bulkMode && <th style={{ ...s.cell, width: 36, textAlign: 'center' }}>
+                  <input type="checkbox" checked={filtered.length > 0 && filtered.every(t => selectedIds.has(t.id))} onChange={toggleSelectAll} style={{ cursor: 'pointer', accentColor: 'var(--color-accent)' }} />
+                </th>}
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Fecha</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>Monto</th>
                 <th style={{ ...s.cell, fontWeight: 600, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Categoría</th>
@@ -366,6 +631,7 @@ export default function Historial() {
               </tr>
               {/* Filter row */}
               <tr style={{ position: 'sticky', top: 33, zIndex: 4, background: 'var(--bg-secondary)' }}>
+                {bulkMode && <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }} />}
                 <td style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)' }}>
                   <input type="text" value={colFilters.date} onChange={e => setFilter('date', e.target.value)} placeholder="YYYY-MM-DD" style={s.filterInput} />
                 </td>
@@ -415,16 +681,22 @@ export default function Historial() {
             <tbody>
               {pageData.map(tx => {
                 const isEditing = editingId === tx.id
-                const isDeleting = deletingId === tx.id
+                const isDeleteTarget = confirmAction?.mode === 'delete' && confirmAction.tx?.id === tx.id
+                const isSelected = bulkMode && selectedIds.has(tx.id)
                 const catName = catMap[tx.category_id]?.name || '–'
                 const subName = tx.type === 'income' ? (conMap[tx.concept_id]?.name || tx.income_concept || '–') : (subMap[tx.subcategory_id]?.name || '–')
                 const conName = tx.type === 'income' ? (tx.income_subtype || '–') : (conMap[tx.concept_id]?.name || '–')
+                const rowBg = isEditing ? 'var(--color-accent-bg)' : isDeleteTarget ? 'var(--color-expense-bg)' : isSelected ? 'var(--color-accent-bg)' : 'transparent'
+                const rowShadow = isEditing ? 'inset 3px 0 0 var(--color-accent)' : isDeleteTarget ? 'inset 3px 0 0 var(--color-expense)' : 'none'
 
                 return (
-                  <tr key={tx.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  <tr key={tx.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s', background: rowBg, boxShadow: rowShadow }}
+                    onMouseEnter={e => { if (!isEditing && !isDeleteTarget && !isSelected) e.currentTarget.style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = rowBg }}
                   >
+                    {bulkMode && <td style={{ ...s.cell, textAlign: 'center', width: 36 }}>
+                      <input type="checkbox" checked={selectedIds.has(tx.id)} onChange={() => toggleSelect(tx.id)} style={{ cursor: 'pointer', accentColor: 'var(--color-accent)' }} />
+                    </td>}
                     <td style={s.cell}>
                       {isEditing ? (
                         <input type="date" value={editData.date} onChange={e => setEditData(p => ({ ...p, date: e.target.value }))} style={{ ...s.editInput, width: 130 }} />
@@ -516,20 +788,9 @@ export default function Historial() {
                       {tx.exchange_rate ? parseFloat(tx.exchange_rate).toLocaleString('es-AR', { maximumFractionDigits: 2 }) : <span style={{ color: 'var(--text-dim)' }}>–</span>}
                     </td>
                     <td style={{ ...s.cell, textAlign: 'center' }}>
-                      {isDeleting ? (
+                      {isEditing ? (
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                          <button onClick={() => confirmDelete(tx.id)} disabled={saving}
-                            style={{ ...s.iconBtn(), color: 'var(--color-expense-light)', fontSize: 11, fontFamily: 'inherit', background: 'var(--color-expense-bg)', borderRadius: 4, padding: '2px 8px', border: '1px solid var(--color-expense-border)' }}>
-                            Borrar
-                          </button>
-                          <button onClick={() => setDeletingId(null)}
-                            style={{ ...s.iconBtn(), fontSize: 11, fontFamily: 'inherit', padding: '2px 8px' }}>
-                            No
-                          </button>
-                        </div>
-                      ) : isEditing ? (
-                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                          <button onClick={() => saveEdit(tx.id)} disabled={saving}
+                          <button onClick={() => requestSaveEdit(tx.id)} disabled={confirming}
                             style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-income)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
                             <Check size={15} />
                           </button>
@@ -538,25 +799,25 @@ export default function Historial() {
                             <X size={15} />
                           </button>
                         </div>
-                      ) : (
+                      ) : !bulkMode ? (
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                           <button onClick={() => startEdit(tx)}
                             style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
                             <Pencil size={14} />
                           </button>
-                          <button onClick={() => setDeletingId(tx.id)}
+                          <button onClick={() => requestDelete(tx)}
                             style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-expense)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
                             <Trash2 size={14} />
                           </button>
                         </div>
-                      )}
+                      ) : null}
                     </td>
                   </tr>
                 )
               })}
               {pageData.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={bulkMode ? 10 : 9} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <div style={{ fontSize: 32, opacity: 0.3, marginBottom: 8 }}>{tab === 'expense' ? '📊' : '💰'}</div>
                     <div style={{ fontSize: 14 }}>
                       {Object.values(colFilters).some(v => v) ? 'No hay resultados con los filtros aplicados' : `No hay ${tab === 'expense' ? 'gastos' : 'ingresos'} registrados`}
@@ -590,7 +851,139 @@ export default function Historial() {
         </div>
       )}
 
-      {toast && <div className={`toast ${toast.type}`}>✗ {toast.msg}</div>}
+      {toast && <div className={`toast ${toast.type}`}>{toast.type === 'error' ? '✗' : '✓'} {toast.msg}</div>}
+
+      {/* Confirmation Modal */}
+      {confirmAction && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease',
+        }} onClick={e => { if (e.target === e.currentTarget && !confirming) setConfirmAction(null) }}>
+          <div style={{
+            width: '100%', maxWidth: 520, background: 'var(--bg-card)',
+            borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
+            padding: '20px 20px 32px', boxShadow: '0 -8px 40px rgba(0,0,0,0.3)',
+            animation: 'slideUp 0.25s ease',
+            maxHeight: '80vh', overflowY: 'auto',
+          }}>
+            {/* Title */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                {confirmAction.mode === 'edit' && 'Confirmar cambios'}
+                {confirmAction.mode === 'bulk' && 'Confirmar edición masiva'}
+                {confirmAction.mode === 'delete' && 'Confirmar eliminación'}
+                {confirmAction.mode === 'bulkDelete' && 'Confirmar eliminación masiva'}
+              </div>
+              <button onClick={() => setConfirmAction(null)} disabled={confirming}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>
+                ×
+              </button>
+            </div>
+
+            {/* Inline edit: show before/after */}
+            {confirmAction.mode === 'edit' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                {Object.entries(confirmAction.changes).map(([field, { from, to }]) => (
+                  <div key={field} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)',
+                    fontSize: 12,
+                  }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-muted)', minWidth: 90 }}>{fieldLabel(field)}</span>
+                    <span style={{ color: 'var(--color-expense-light)', textDecoration: 'line-through', flex: 1 }}>{from || '–'}</span>
+                    <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>→</span>
+                    <span style={{ color: 'var(--color-income-light)', fontWeight: 600, flex: 1, textAlign: 'right' }}>{to || '–'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Bulk edit: show count + fields */}
+            {confirmAction.mode === 'bulk' && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ padding: '12px 14px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {confirmAction.ids.length} transacciones serán modificadas
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {Object.entries(confirmAction.fields).map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 12px', fontSize: 12 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{label}</span>
+                      <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Single delete: show tx details */}
+            {confirmAction.mode === 'delete' && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{
+                  background: 'var(--color-expense-bg)', border: '1px solid var(--color-expense-border)',
+                  borderRadius: 'var(--radius-sm)', padding: '12px 14px',
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    {catMap[confirmAction.tx.category_id]?.name || confirmAction.tx.income_concept || '–'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {fmtDate(confirmAction.tx.date)} · {fmt(confirmAction.tx.amount, confirmAction.tx.currency)}
+                  </div>
+                  {confirmAction.tx.description && (
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{confirmAction.tx.description}</div>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-expense-light)', marginTop: 10 }}>
+                  Esta acción no se puede deshacer.
+                </div>
+              </div>
+            )}
+
+            {/* Bulk delete: show count */}
+            {confirmAction.mode === 'bulkDelete' && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{
+                  background: 'var(--color-expense-bg)', border: '1px solid var(--color-expense-border)',
+                  borderRadius: 'var(--radius-sm)', padding: '12px 14px',
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {confirmAction.ids.length} transacciones serán eliminadas
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-expense-light)', marginTop: 10 }}>
+                  Esta acción no se puede deshacer.
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setConfirmAction(null)} disabled={confirming} style={{
+                flex: 1, padding: '12px', border: '1.5px solid var(--border-default)',
+                background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
+                borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 600,
+                cursor: confirming ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                opacity: confirming ? 0.5 : 1, transition: 'all 0.15s',
+              }}>Volver</button>
+              <button onClick={executeConfirm} disabled={confirming} style={{
+                flex: 2, padding: '12px', border: 'none',
+                background: (confirmAction.mode === 'delete' || confirmAction.mode === 'bulkDelete') ? 'var(--color-expense)' : 'var(--color-accent)',
+                color: '#fff',
+                borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 700,
+                cursor: confirming ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                opacity: confirming ? 0.7 : 1, transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>
+                {confirming
+                  ? <><span className="sb-spin sb-spin-white" /> Procesando...</>
+                  : (confirmAction.mode === 'delete' || confirmAction.mode === 'bulkDelete') ? 'Eliminar' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
