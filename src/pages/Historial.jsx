@@ -79,7 +79,7 @@ export default function Historial() {
     if (cf.amount) data = data.filter(t => String(t.amount || '').includes(cf.amount))
     if (cf.category) data = data.filter(t => (catMap[t.category_id]?.name || '') === cf.category)
     if (cf.subcategory) data = data.filter(t => {
-      const name = t.type === 'income' ? (t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')
+      const name = t.type === 'income' ? (conMap[t.concept_id]?.name || t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')
       return name === cf.subcategory
     })
     if (cf.concept) data = data.filter(t => {
@@ -111,7 +111,7 @@ export default function Historial() {
       let d = data
       if (exclude !== 'category' && cf.category) d = d.filter(t => (catMap[t.category_id]?.name || '') === cf.category)
       if (exclude !== 'subcategory' && cf.subcategory) d = d.filter(t => {
-        const name = t.type === 'income' ? (t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')
+        const name = t.type === 'income' ? (conMap[t.concept_id]?.name || t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')
         return name === cf.subcategory
       })
       if (exclude !== 'concept' && cf.concept) d = d.filter(t => {
@@ -132,7 +132,7 @@ export default function Historial() {
     const persData = applyOtherFilters('person')
 
     const cats = [...new Set(catsData.map(t => catMap[t.category_id]?.name || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
-    const subs = [...new Set(subsData.map(t => t.type === 'income' ? (t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+    const subs = [...new Set(subsData.map(t => t.type === 'income' ? (conMap[t.concept_id]?.name || t.income_concept || '') : (subMap[t.subcategory_id]?.name || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     const cons = [...new Set(consData.map(t => t.type === 'income' ? (t.income_subtype || '') : (conMap[t.concept_id]?.name || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     const pers = [...new Set(persData.map(t => t.person).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
     return { cats, subs, cons, pers }
@@ -414,7 +414,7 @@ export default function Historial() {
                 const isEditing = editingId === tx.id
                 const isDeleting = deletingId === tx.id
                 const catName = catMap[tx.category_id]?.name || '–'
-                const subName = tx.type === 'income' ? (tx.income_concept || '–') : (subMap[tx.subcategory_id]?.name || '–')
+                const subName = tx.type === 'income' ? (conMap[tx.concept_id]?.name || tx.income_concept || '–') : (subMap[tx.subcategory_id]?.name || '–')
                 const conName = tx.type === 'income' ? (tx.income_subtype || '–') : (conMap[tx.concept_id]?.name || '–')
 
                 return (
