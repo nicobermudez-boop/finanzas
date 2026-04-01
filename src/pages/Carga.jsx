@@ -329,7 +329,8 @@ export default function Carga() {
     } else {
       setCatId(null); setSubId(null); setConId(null)
       setPay('Contado'); setInst(1); setDest('')
-      setIncCon(tx.income_concept)
+      const conceptName = incomeCat?.subcategories?.flatMap(s => s.concepts || []).find(c => c.id === tx.concept_id)?.name
+      setIncCon(conceptName || null)
       setIncSub(tx.income_subtype || 'recurrente')
     }
 
@@ -340,7 +341,7 @@ export default function Carga() {
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
     setTimeout(() => aRef.current?.focus(), 350)
-  }, [])
+  }, [incomeCat])
 
   const reset = useCallback(() => {
     setAmount(''); setCatId(null); setSubId(null); setConId(null)
@@ -379,7 +380,6 @@ export default function Carga() {
       categoryId: type === 'expense' ? catId : incomeCategoryId,
       subcategoryId: type === 'expense' ? subId : incomeSubcategoryId,
       conceptId: type === 'expense' ? conId : incomeConceptId,
-      incomeConcept: type === 'income' ? incCon : null,
       incomeSubtype: type === 'income' ? incSub : null,
       description: desc || cons.find(c => c.id === conId)?.name || incCon || null,
       paymentMethod: type === 'expense' ? pay : null,

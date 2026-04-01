@@ -167,7 +167,6 @@ export default function TransactionForm({ user, onSignOut }) {
         categoryId: type === 'expense' ? catId : incomeCategoryId,
         subcategoryId: type === 'expense' ? subId : incomeSubcategoryId,
         conceptId: type === 'expense' ? conId : incomeConceptId,
-        incomeConcept: type === 'income' ? incCon : null,
         incomeSubtype: type === 'income' ? incSub : null,
         description: desc || null,
         paymentMethod: type === 'expense' ? pay : null,
@@ -367,7 +366,7 @@ export default function TransactionForm({ user, onSignOut }) {
               <span className="rx">{tx.categories?.icon || '💰'}</span>
               <div className="rn">
                 <div className="rc2">
-                  {tx.concepts?.name || tx.income_concept || ''}
+                  {tx.concepts?.name || ''}
                   {tx.destination && <span style={{ color: 'var(--txd)' }}> · {tx.destination}</span>}
                 </div>
                 <div className="rd">

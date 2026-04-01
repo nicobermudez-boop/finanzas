@@ -20,9 +20,9 @@ export default function RecentTransactions({ transactions, onRepeat }) {
             <span className="rx">{tx.categories?.icon || '💰'}</span>
             <div className="rn">
               <div className="rc2">
-                {tx.concepts?.name || tx.income_concept || ''}
+                {tx.concepts?.name || ''}
                 {tx.destination && <span style={{ color: 'var(--text-muted)' }}> · {tx.destination}</span>}
-                {tx.description && tx.description !== (tx.concepts?.name || tx.income_concept) && (
+                {tx.description && tx.description !== tx.concepts?.name && (
                   <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {tx.description}</span>
                 )}
               </div>

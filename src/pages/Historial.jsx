@@ -9,8 +9,6 @@ import useIsMobile from '../hooks/useIsMobile'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import { fmt } from '../lib/format'
 
-const INCOME_CONCEPTS = ['Sueldo', 'Bono', 'Rentas', 'Otros']
-
 const PAGE_SIZE = 25
 
 function fmtDate(d) {
@@ -70,6 +68,13 @@ export default function Historial() {
   const catMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories])
   const subMap = useMemo(() => Object.fromEntries(subcategories.map(s => [s.id, s])), [subcategories])
   const conMap = useMemo(() => Object.fromEntries(concepts.map(c => [c.id, c])), [concepts])
+
+  // Concepts that belong to income categories (for the inline edit dropdown)
+  const incomeConcepts = useMemo(() => {
+    const incomeCatIds = new Set(categories.filter(c => c.type === 'income').map(c => c.id))
+    const incomeSubIds = new Set(subcategories.filter(s => incomeCatIds.has(s.category_id)).map(s => s.id))
+    return concepts.filter(c => incomeSubIds.has(c.subcategory_id))
+  }, [categories, subcategories, concepts])
 
   const filtered = useMemo(() => {
     let data = transactions.filter(t => t.type === tab)
@@ -150,7 +155,6 @@ export default function Historial() {
       subcategory_id: tx.subcategory_id || null,
       concept_id: tx.concept_id || null,
       person_id: tx.person_id || null,
-      income_concept: tx.income_concept || null,
       income_subtype: tx.income_subtype || null,
     })
   }
@@ -189,7 +193,6 @@ export default function Historial() {
       concept_id: editData.concept_id || null,
       person_id: editData.person_id || null,
       person: personName,
-      income_concept: editData.income_concept || null,
       income_subtype: editData.income_subtype || null,
       exchange_rate,
       amount_usd,
@@ -239,8 +242,8 @@ export default function Historial() {
       t.type === 'expense' ? 'Gasto' : 'Ingreso',
       t.amount,
       t.currency,
-      catMap[t.category_id]?.name || t.income_concept || '',
-      subMap[t.subcategory_id]?.name || t.income_subtype || '',
+      catMap[t.category_id]?.name || '',
+      subMap[t.subcategory_id]?.name || '',
       conMap[t.concept_id]?.name || '',
       t.description || '',
       t.payment_method || '',
@@ -469,9 +472,9 @@ export default function Historial() {
                             ))}
                           </select>
                         ) : (
-                          <select value={editData.income_concept || ''} onChange={e => setEditData(p => ({ ...p, income_concept: e.target.value || null }))} style={s.editInput}>
+                          <select value={editData.concept_id || ''} onChange={e => setEditData(p => ({ ...p, concept_id: e.target.value || null }))} style={s.editInput}>
                             <option value="">–</option>
-                            {INCOME_CONCEPTS.map(ic => <option key={ic} value={ic}>{ic}</option>)}
+                            {incomeConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                         )
                       ) : subName}
