@@ -54,7 +54,6 @@ export async function createTransaction(tx, userId) {
     category_id: tx.categoryId || null,
     subcategory_id: tx.subcategoryId || null,
     concept_id: tx.conceptId || null,
-    income_concept: tx.incomeConcept || null,
     income_subtype: tx.incomeSubtype || null,
     description: tx.description || null,
     payment_method: tx.paymentMethod || null,
