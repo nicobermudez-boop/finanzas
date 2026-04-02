@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Check, NotebookPen } from 'lucide-react'
+import { Plus, Trash2, Check, NotebookPen, Loader2 } from 'lucide-react'
 import { SkeletonList } from '../components/Skeleton'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
