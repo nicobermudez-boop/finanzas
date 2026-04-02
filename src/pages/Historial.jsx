@@ -3,13 +3,14 @@ import { usePersistedState } from '../hooks/usePersistedState'
 import { supabase } from '../lib/supabase'
 import { getExchangeRate } from '../lib/exchangeRate'
 import { useAuth } from '../context/AuthContext'
-import { Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight, ListChecks } from 'lucide-react'
+import { Pencil, Trash2, Download, Check, X, ChevronLeft, ChevronRight, ChevronDown, ListChecks } from 'lucide-react'
 import { SkeletonTable } from '../components/Skeleton'
 import useIsMobile from '../hooks/useIsMobile'
 import { fetchAllTransactions } from '../lib/fetchAll'
 import { fmt } from '../lib/format'
 
 const PAGE_SIZE = 25
+const INCOME_CONCEPTS = ['Sueldo', 'Bono', 'Rentas', 'Otros']
 
 function fmtDate(d) {
   if (!d) return '–'
@@ -41,6 +42,8 @@ export default function Historial() {
     date: '', amount: '', category: '', subcategory: '', concept: '', description: '', person: '', fxRate: '',
   })
   const setFilter = (key, val) => { setColFilters(prev => ({ ...prev, [key]: val })); setPage(0) }
+  const [sortBy, setSortBy] = usePersistedState('finanzas-historial-sort', 'date')
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set())
 
   // Fetch all data
   const fetchData = useCallback(async () => {
@@ -98,13 +101,45 @@ export default function Historial() {
     if (cf.person) data = data.filter(t => (t.person || '') === cf.person)
     if (cf.fxRate) data = data.filter(t => String(t.exchange_rate || '').includes(cf.fxRate))
 
-    return data
-  }, [transactions, tab, colFilters, catMap, subMap, conMap])
+    if (sortBy === 'date') {
+      data = [...data].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0))
+    }
+    // sortBy === 'created_at': already sorted from fetch
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+    return data
+  }, [transactions, tab, colFilters, catMap, subMap, conMap, sortBy])
+
+  // Group installment transactions (cuotas) visually
+  const displayRows = useMemo(() => {
+    const groupMap = {}
+    for (const tx of filtered) {
+      if (tx.installment_group_id) {
+        if (!groupMap[tx.installment_group_id]) groupMap[tx.installment_group_id] = []
+        groupMap[tx.installment_group_id].push(tx)
+      }
+    }
+    for (const gid in groupMap) {
+      groupMap[gid].sort((a, b) => (a.installment_number || 0) - (b.installment_number || 0))
+    }
+    const rows = []
+    const seen = new Set()
+    for (const tx of filtered) {
+      if (tx.installment_group_id) {
+        if (!seen.has(tx.installment_group_id)) {
+          seen.add(tx.installment_group_id)
+          rows.push({ type: 'group', groupId: tx.installment_group_id, txs: groupMap[tx.installment_group_id] })
+        }
+      } else {
+        rows.push({ type: 'single', tx })
+      }
+    }
+    return rows
+  }, [filtered])
+
+  const totalPages = Math.ceil(displayRows.length / PAGE_SIZE)
   const pageData = useMemo(() =>
-    filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [filtered, page]
+    displayRows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [displayRows, page]
   )
 
   // Reset page and filters on tab change
@@ -164,6 +199,25 @@ export default function Historial() {
     const allIds = filtered.map(t => t.id)
     const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id))
     setSelectedIds(allSelected ? new Set() : new Set(allIds))
+  }
+
+  const toggleGroup = (groupId) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(groupId)) next.delete(groupId); else next.add(groupId)
+      return next
+    })
+  }
+
+  const toggleSelectGroup = (groupId, txs) => {
+    const ids = txs.map(t => t.id)
+    const allSelected = ids.every(id => selectedIds.has(id))
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allSelected) ids.forEach(id => next.delete(id))
+      else ids.forEach(id => next.add(id))
+      return next
+    })
   }
 
   const setBulkField = (key, value) => {
@@ -508,6 +562,22 @@ export default function Historial() {
           {/* Bulk + Export buttons */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             <button
+              onClick={() => setSortBy(s => s === 'date' ? 'created_at' : 'date')}
+              title={sortBy === 'date' ? 'Ordenado por fecha de transacción' : 'Ordenado por fecha de carga'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-subtle)', background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-tertiary)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              {sortBy === 'date' ? 'Fecha tx' : 'Fecha alta'}
+            </button>
+            <button
               onClick={toggleBulkMode}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -679,141 +749,215 @@ export default function Historial() {
               </tr>
             </thead>
             <tbody>
-              {pageData.map(tx => {
-                const isEditing = editingId === tx.id
-                const isDeleteTarget = confirmAction?.mode === 'delete' && confirmAction.tx?.id === tx.id
-                const isSelected = bulkMode && selectedIds.has(tx.id)
-                const catName = catMap[tx.category_id]?.name || '–'
-                const subName = tx.type === 'income' ? (conMap[tx.concept_id]?.name || tx.income_concept || '–') : (subMap[tx.subcategory_id]?.name || '–')
-                const conName = tx.type === 'income' ? (tx.income_subtype || '–') : (conMap[tx.concept_id]?.name || '–')
-                const rowBg = isEditing ? 'var(--color-accent-bg)' : isDeleteTarget ? 'var(--color-expense-bg)' : isSelected ? 'var(--color-accent-bg)' : 'transparent'
-                const rowShadow = isEditing ? 'inset 3px 0 0 var(--color-accent)' : isDeleteTarget ? 'inset 3px 0 0 var(--color-expense)' : 'none'
-
-                return (
-                  <tr key={tx.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s', background: rowBg, boxShadow: rowShadow }}
-                    onMouseEnter={e => { if (!isEditing && !isDeleteTarget && !isSelected) e.currentTarget.style.background = 'var(--bg-hover)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = rowBg }}
-                  >
-                    {bulkMode && <td style={{ ...s.cell, textAlign: 'center', width: 36 }}>
-                      <input type="checkbox" checked={selectedIds.has(tx.id)} onChange={() => toggleSelect(tx.id)} style={{ cursor: 'pointer', accentColor: 'var(--color-accent)' }} />
-                    </td>}
-                    <td style={s.cell}>
-                      {isEditing ? (
-                        <input type="date" value={editData.date} onChange={e => setEditData(p => ({ ...p, date: e.target.value }))} style={{ ...s.editInput, width: 130 }} />
-                      ) : fmtDate(tx.date)}
-                    </td>
-                    <td style={s.cellMono}>
-                      {isEditing ? (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <input type="text" value={editData.amount} onChange={e => setEditData(p => ({ ...p, amount: e.target.value }))} style={{ ...s.editInput, width: 80, textAlign: 'right' }} />
-                          <select value={editData.currency} onChange={e => setEditData(p => ({ ...p, currency: e.target.value }))} style={{ ...s.editInput, width: 60 }}>
-                            <option value="ARS">ARS</option>
-                            <option value="USD">USD</option>
-                          </select>
-                        </div>
-                      ) : (
-                        <span style={{ color: tx.type === 'expense' ? 'var(--color-expense-light)' : 'var(--color-income-light)' }}>
-                          {fmt(tx.amount, tx.currency)}
-                          <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>{tx.currency}</span>
-                        </span>
-                      )}
-                    </td>
-                    <td style={s.cellMuted}>
-                      {isEditing ? (
-                        <select value={editData.category_id || ''} onChange={e => {
-                          const val = e.target.value || null
-                          setEditData(p => ({ ...p, category_id: val, subcategory_id: null, concept_id: null }))
-                        }} style={s.editInput}>
-                          <option value="">–</option>
-                          {categories.filter(c => c.type === tab && !c.archived).map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                      ) : catName}
-                    </td>
-                    <td style={s.cellMuted}>
-                      {isEditing ? (
-                        tx.type === 'expense' ? (
-                          <select value={editData.subcategory_id || ''} onChange={e => {
+              {pageData.flatMap(item => {
+                const renderTxRow = (tx, isChild) => {
+                  const isEditing = editingId === tx.id
+                  const isDeleteTarget = confirmAction?.mode === 'delete' && confirmAction.tx?.id === tx.id
+                  const isRowSelected = bulkMode && selectedIds.has(tx.id)
+                  const catName = catMap[tx.category_id]?.name || '–'
+                  const subName = tx.type === 'income' ? (conMap[tx.concept_id]?.name || tx.income_concept || '–') : (subMap[tx.subcategory_id]?.name || '–')
+                  const conName = tx.type === 'income' ? (tx.income_subtype || '–') : (conMap[tx.concept_id]?.name || '–')
+                  const rowBg = isEditing ? 'var(--color-accent-bg)' : isDeleteTarget ? 'var(--color-expense-bg)' : isRowSelected ? 'var(--color-accent-bg)' : 'transparent'
+                  const rowShadow = isChild
+                    ? (isEditing ? 'inset 3px 0 0 var(--color-accent)' : isDeleteTarget ? 'inset 3px 0 0 var(--color-expense)' : 'inset 3px 0 0 var(--border-subtle)')
+                    : (isEditing ? 'inset 3px 0 0 var(--color-accent)' : isDeleteTarget ? 'inset 3px 0 0 var(--color-expense)' : 'none')
+                  return (
+                    <tr key={tx.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s', background: rowBg, boxShadow: rowShadow }}
+                      onMouseEnter={e => { if (!isEditing && !isDeleteTarget && !isRowSelected) e.currentTarget.style.background = 'var(--bg-hover)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = rowBg }}
+                    >
+                      {bulkMode && <td style={{ ...s.cell, textAlign: 'center', width: 36 }}>
+                        <input type="checkbox" checked={selectedIds.has(tx.id)} onChange={() => toggleSelect(tx.id)} style={{ cursor: 'pointer', accentColor: 'var(--color-accent)' }} />
+                      </td>}
+                      <td style={s.cell}>
+                        {isEditing ? (
+                          <input type="date" value={editData.date} onChange={e => setEditData(p => ({ ...p, date: e.target.value }))} style={{ ...s.editInput, width: 130 }} />
+                        ) : isChild ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 20 }}>
+                            <span style={{ fontSize: 10, background: 'var(--color-accent-bg)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 5px', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                              {tx.installment_number}/{tx.installments}
+                            </span>
+                            {fmtDate(tx.date)}
+                          </div>
+                        ) : fmtDate(tx.date)}
+                      </td>
+                      <td style={s.cellMono}>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <input type="text" value={editData.amount} onChange={e => setEditData(p => ({ ...p, amount: e.target.value }))} style={{ ...s.editInput, width: 80, textAlign: 'right' }} />
+                            <select value={editData.currency} onChange={e => setEditData(p => ({ ...p, currency: e.target.value }))} style={{ ...s.editInput, width: 60 }}>
+                              <option value="ARS">ARS</option>
+                              <option value="USD">USD</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <span style={{ color: tx.type === 'expense' ? 'var(--color-expense-light)' : 'var(--color-income-light)' }}>
+                            {fmt(tx.amount, tx.currency)}
+                            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>{tx.currency}</span>
+                          </span>
+                        )}
+                      </td>
+                      <td style={s.cellMuted}>
+                        {isEditing ? (
+                          <select value={editData.category_id || ''} onChange={e => {
                             const val = e.target.value || null
-                            setEditData(p => ({ ...p, subcategory_id: val, concept_id: null }))
+                            setEditData(p => ({ ...p, category_id: val, subcategory_id: null, concept_id: null }))
                           }} style={s.editInput}>
                             <option value="">–</option>
-                            {subcategories.filter(sc => sc.category_id === editData.category_id && !sc.archived).map(sc => (
-                              <option key={sc.id} value={sc.id}>{sc.name}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <select value={editData.concept_id || ''} onChange={e => setEditData(p => ({ ...p, concept_id: e.target.value || null }))} style={s.editInput}>
-                            <option value="">–</option>
-                            {incomeConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
-                        )
-                      ) : subName}
-                    </td>
-                    <td style={s.cellMuted}>
-                      {isEditing ? (
-                        tx.type === 'expense' ? (
-                          <select value={editData.concept_id || ''} onChange={e => setEditData(p => ({ ...p, concept_id: e.target.value || null }))} style={s.editInput}>
-                            <option value="">–</option>
-                            {concepts.filter(c => c.subcategory_id === editData.subcategory_id && !c.archived).map(c => (
+                            {categories.filter(c => c.type === tab && !c.archived).map(c => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                           </select>
+                        ) : catName}
+                      </td>
+                      <td style={s.cellMuted}>
+                        {isEditing ? (
+                          tx.type === 'expense' ? (
+                            <select value={editData.subcategory_id || ''} onChange={e => {
+                              const val = e.target.value || null
+                              setEditData(p => ({ ...p, subcategory_id: val, concept_id: null }))
+                            }} style={s.editInput}>
+                              <option value="">–</option>
+                              {subcategories.filter(sc => sc.category_id === editData.category_id && !sc.archived).map(sc => (
+                                <option key={sc.id} value={sc.id}>{sc.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <select value={editData.concept_id || ''} onChange={e => setEditData(p => ({ ...p, concept_id: e.target.value || null }))} style={s.editInput}>
+                              <option value="">–</option>
+                              {incomeConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                          )
+                        ) : subName}
+                      </td>
+                      <td style={s.cellMuted}>
+                        {isEditing ? (
+                          tx.type === 'expense' ? (
+                            <select value={editData.concept_id || ''} onChange={e => setEditData(p => ({ ...p, concept_id: e.target.value || null }))} style={s.editInput}>
+                              <option value="">–</option>
+                              {concepts.filter(c => c.subcategory_id === editData.subcategory_id && !c.archived).map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <select value={editData.income_subtype || ''} onChange={e => setEditData(p => ({ ...p, income_subtype: e.target.value || null }))} style={s.editInput}>
+                              <option value="">–</option>
+                              <option value="recurrente">Recurrente</option>
+                              <option value="extraordinario">Extraordinario</option>
+                            </select>
+                          )
+                        ) : conName}
+                      </td>
+                      <td style={s.cell}>
+                        {isEditing ? (
+                          <input type="text" value={editData.description} onChange={e => setEditData(p => ({ ...p, description: e.target.value }))} style={s.editInput} placeholder="Descripción..." />
                         ) : (
-                          <select value={editData.income_subtype || ''} onChange={e => setEditData(p => ({ ...p, income_subtype: e.target.value || null }))} style={s.editInput}>
+                          <span style={{ color: tx.description ? 'var(--text-secondary)' : 'var(--text-dim)' }}>{tx.description || '–'}</span>
+                        )}
+                      </td>
+                      <td style={s.cellMuted}>
+                        {isEditing ? (
+                          <select value={editData.person_id || ''} onChange={e => setEditData(p => ({ ...p, person_id: e.target.value || null }))} style={s.editInput}>
                             <option value="">–</option>
-                            <option value="recurrente">Recurrente</option>
-                            <option value="extraordinario">Extraordinario</option>
+                            {persons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
-                        )
-                      ) : conName}
-                    </td>
+                        ) : (tx.person || '–')}
+                      </td>
+                      <td style={s.cellMono}>
+                        {tx.exchange_rate ? parseFloat(tx.exchange_rate).toLocaleString('es-AR', { maximumFractionDigits: 0 }) : <span style={{ color: 'var(--text-dim)' }}>–</span>}
+                      </td>
+                      <td style={{ ...s.cell, textAlign: 'center' }}>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                            <button onClick={() => requestSaveEdit(tx.id)} disabled={confirming}
+                              style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-income)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                              <Check size={15} />
+                            </button>
+                            <button onClick={cancelEdit}
+                              style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-expense)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                              <X size={15} />
+                            </button>
+                          </div>
+                        ) : !bulkMode ? (
+                          <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                            <button onClick={() => startEdit(tx)}
+                              style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => requestDelete(tx)}
+                              style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-expense)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )
+                }
+
+                if (item.type === 'single') return [renderTxRow(item.tx, false)]
+
+                // Installment group
+                const { groupId, txs } = item
+                const isExpanded = !collapsedGroups.has(groupId)
+                const firstTx = txs[0]
+                const groupAllSelected = bulkMode && txs.every(t => selectedIds.has(t.id))
+                const groupPartialSelected = bulkMode && !groupAllSelected && txs.some(t => selectedIds.has(t.id))
+                const gCatName = catMap[firstTx.category_id]?.name || '–'
+                const gSubName = firstTx.type === 'income' ? (conMap[firstTx.concept_id]?.name || firstTx.income_concept || '–') : (subMap[firstTx.subcategory_id]?.name || '–')
+                const gConName = firstTx.type === 'income' ? (firstTx.income_subtype || '–') : (conMap[firstTx.concept_id]?.name || '–')
+                const totalInst = firstTx.installments || txs.length
+                const groupBg = groupAllSelected ? 'var(--color-accent-bg)' : 'var(--bg-secondary)'
+
+                const groupRow = (
+                  <tr key={`group-${groupId}`}
+                    style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s', background: groupBg, cursor: 'pointer' }}
+                    onClick={() => toggleGroup(groupId)}
+                    onMouseEnter={e => { if (!groupAllSelected) e.currentTarget.style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = groupBg }}
+                  >
+                    {bulkMode && <td style={{ ...s.cell, textAlign: 'center', width: 36 }} onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={groupAllSelected}
+                        ref={el => { if (el) el.indeterminate = groupPartialSelected }}
+                        onChange={() => toggleSelectGroup(groupId, txs)}
+                        style={{ cursor: 'pointer', accentColor: 'var(--color-accent)' }}
+                      />
+                    </td>}
                     <td style={s.cell}>
-                      {isEditing ? (
-                        <input type="text" value={editData.description} onChange={e => setEditData(p => ({ ...p, description: e.target.value }))} style={s.editInput} placeholder="Descripción..." />
-                      ) : (
-                        <span style={{ color: tx.description ? 'var(--text-secondary)' : 'var(--text-dim)' }}>{tx.description || '–'}</span>
-                      )}
-                    </td>
-                    <td style={s.cellMuted}>
-                      {isEditing ? (
-                        <select value={editData.person_id || ''} onChange={e => setEditData(p => ({ ...p, person_id: e.target.value || null }))} style={s.editInput}>
-                          <option value="">–</option>
-                          {persons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                      ) : (tx.person || '–')}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                          {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                        </span>
+                        {fmtDate(firstTx.date)}
+                      </div>
                     </td>
                     <td style={s.cellMono}>
-                      {tx.exchange_rate ? parseFloat(tx.exchange_rate).toLocaleString('es-AR', { maximumFractionDigits: 2 }) : <span style={{ color: 'var(--text-dim)' }}>–</span>}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                        <span style={{ color: firstTx.type === 'expense' ? 'var(--color-expense-light)' : 'var(--color-income-light)' }}>
+                          {fmt(firstTx.amount, firstTx.currency)}
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>{firstTx.currency}</span>
+                        </span>
+                        <span style={{ fontSize: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 5px', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                          {txs.length}/{totalInst} cuotas
+                        </span>
+                      </div>
                     </td>
-                    <td style={{ ...s.cell, textAlign: 'center' }}>
-                      {isEditing ? (
-                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                          <button onClick={() => requestSaveEdit(tx.id)} disabled={confirming}
-                            style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-income)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
-                            <Check size={15} />
-                          </button>
-                          <button onClick={cancelEdit}
-                            style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-expense)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
-                            <X size={15} />
-                          </button>
-                        </div>
-                      ) : !bulkMode ? (
-                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                          <button onClick={() => startEdit(tx)}
-                            style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
-                            <Pencil size={14} />
-                          </button>
-                          <button onClick={() => requestDelete(tx)}
-                            style={s.iconBtn()} onMouseEnter={e => e.currentTarget.style.color = 'var(--color-expense)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ) : null}
+                    <td style={s.cellMuted}>{gCatName}</td>
+                    <td style={s.cellMuted}>{gSubName}</td>
+                    <td style={s.cellMuted}>{gConName}</td>
+                    <td style={s.cell}><span style={{ color: firstTx.description ? 'var(--text-secondary)' : 'var(--text-dim)' }}>{firstTx.description || '–'}</span></td>
+                    <td style={s.cellMuted}>{firstTx.person || '–'}</td>
+                    <td style={s.cellMono}>
+                      {firstTx.exchange_rate ? parseFloat(firstTx.exchange_rate).toLocaleString('es-AR', { maximumFractionDigits: 0 }) : <span style={{ color: 'var(--text-dim)' }}>–</span>}
                     </td>
+                    <td style={{ ...s.cell, textAlign: 'center' }} />
                   </tr>
                 )
+
+                if (!isExpanded) return [groupRow]
+                return [groupRow, ...txs.map(tx => renderTxRow(tx, true))]
               })}
               {pageData.length === 0 && (
                 <tr>
@@ -836,7 +980,7 @@ export default function Historial() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {filtered.length} registros · Página {page + 1} de {totalPages}
+            {displayRows.length} registros · Página {page + 1} de {totalPages}
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
