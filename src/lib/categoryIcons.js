@@ -41,6 +41,51 @@ export const EMOJI_TO_ICON = {
   '📦': 'Package',
 }
 
+// Color for each icon — used in CategoryGrid for the tinted icon background
+export const ICON_COLORS = {
+  Car:            '#3B82F6',
+  Plane:          '#06B6D4',
+  Home:           '#8B5CF6',
+  Gift:           '#EC4899',
+  Armchair:       '#F59E0B',
+  Shirt:          '#10B981',
+  Heart:          '#EF4444',
+  Film:           '#F97316',
+  BookOpen:       '#6366F1',
+  ShoppingCart:   '#14B8A6',
+  Wallet:         '#22C55E',
+  UtensilsCrossed:'#F59E0B',
+  PawPrint:       '#F97316',
+  Laptop:         '#3B82F6',
+  Shield:         '#64748B',
+  Zap:            '#EAB308',
+  PiggyBank:      '#EC4899',
+  Building2:      '#6366F1',
+  Coffee:         '#A16207',
+  Dumbbell:       '#EF4444',
+  Music:          '#8B5CF6',
+  Package:        '#94A3B8',
+  Tag:            '#94A3B8',
+  DollarSign:     '#22C55E',
+  CreditCard:     '#3B82F6',
+  Baby:           '#EC4899',
+  Wrench:         '#64748B',
+  Scissors:       '#14B8A6',
+  Bus:            '#F97316',
+  Train:          '#6366F1',
+  Bike:           '#10B981',
+}
+
+/**
+ * Returns the display color for a category icon, resolving legacy emojis.
+ * @param {string} name  icon name or legacy emoji string
+ * @returns {string} hex color
+ */
+export function getIconColor(name) {
+  const resolved = EMOJI_TO_ICON[name] || name
+  return ICON_COLORS[resolved] || '#94A3B8'
+}
+
 // Keyword rules for auto-suggesting an icon from a category name
 const KEYWORD_RULES = [
   { keywords: ['transport', 'auto', 'vehic', 'uber', 'taxi', 'nafta', 'combustib', 'peaje', 'estacionam'], icon: 'Car' },

@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import CategoryIcon from '../components/CategoryIcon'
+import { getIconColor } from '../lib/categoryIcons'
 import { SkeletonGastos } from '../components/Skeleton'
 import { fmt, fmtCompact as fmtC, fmtSmart } from '../lib/format'
 import { getAmount } from '../lib/currency'
@@ -452,7 +453,7 @@ export default function Gastos() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button onClick={() => { setFilterCats([]); setFilterSubs([]); setFilterCons([]) }} style={pillS(!filterCats.length)}>Todas</button>
-              {categories.map(c => <button key={c.id} onClick={() => toggleCat(c.id)} style={{ ...pillS(filterCats.includes(c.id)), display: 'inline-flex', alignItems: 'center', gap: 5 }}><CategoryIcon name={c.icon} size={13} /> {c.name}</button>)}
+              {categories.map(c => <button key={c.id} onClick={() => toggleCat(c.id)} style={{ ...pillS(filterCats.includes(c.id)), display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ color: getIconColor(c.icon) }}><CategoryIcon name={c.icon} size={13} /></span> {c.name}</button>)}
             </div>
             {availableSubs.length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

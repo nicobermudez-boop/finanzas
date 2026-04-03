@@ -1,7 +1,7 @@
 import { memo, useState } from 'react'
 import { Pencil, ArrowRightLeft, Trash2, ChevronRight, Plus } from 'lucide-react'
 import CategoryIcon from '../../components/CategoryIcon'
-import { ICON_LIST } from '../../lib/categoryIcons'
+import { ICON_LIST, getIconColor } from '../../lib/categoryIcons'
 
 function CrudList({ items, onAdd, onRename, onMove, onDelete, entityName, onNavigate, moveTargets, moveLabel, onChangeIcon }) {
   const [adding, setAdding] = useState(false)
@@ -76,7 +76,7 @@ function CrudList({ items, onAdd, onRename, onMove, onDelete, entityName, onNavi
           ) : (
             <>
               <div style={{ flex: 1, minWidth: 0, cursor: onNavigate ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => onNavigate && onNavigate(item.id)}>
-                {item.icon && <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', flexShrink: 0 }}><CategoryIcon name={item.icon} size={15} /></span>}
+                {item.icon && <span style={{ color: getIconColor(item.icon), display: 'flex', alignItems: 'center', flexShrink: 0 }}><CategoryIcon name={item.icon} size={15} /></span>}
                 <div>
                   <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{item.name}</div>
                   {item.parentName && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{item.parentName}</div>}
