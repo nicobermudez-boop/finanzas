@@ -382,10 +382,14 @@ export default function Gastos() {
     return <text x={x + width / 2} y={labelY} textAnchor="middle" fill={fill} fontSize={10} fontFamily="'JetBrains Mono', monospace">{fmtC(value, currency)}</text>
   }
 
-  const excludeBtnStyle = (active) => ({
+  const excludedStyle = { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
+  const viajesBtnStyle = (active) => ({
     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid',
-    ...(active ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
-      : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+    ...(active ? excludedStyle : { background: 'rgba(6,182,212,0.1)', borderColor: 'rgba(6,182,212,0.3)', color: '#06B6D4' }),
+  })
+  const extrasBtnStyle = (active) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid',
+    ...(active ? excludedStyle : { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: '#22C55E' }),
   })
 
   return (
@@ -411,8 +415,8 @@ export default function Gastos() {
               <select value={baseMonthIdx} onChange={e => setBaseMonthIdx(Number(e.target.value))} style={selectStyle}>
                 {MONTHS_SHORT.map((m, i) => i <= maxMonth || baseYear < now0.getFullYear() ? <option key={i} value={i}>{m}</option> : null)}
               </select>
-              <button onClick={() => setExcludeViajes(!excludeViajes)} style={{ ...excludeBtnStyle(excludeViajes), fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Plane size={12} /> Viajes</button>
-              <button onClick={() => setExcludeExtra(!excludeExtra)} style={{ ...excludeBtnStyle(excludeExtra), fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Wallet size={12} /> Extras</button>
+              <button onClick={() => setExcludeViajes(!excludeViajes)} style={{ ...viajesBtnStyle(excludeViajes), fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap' }}><Plane size={12} /> Viajes</button>
+              <button onClick={() => setExcludeExtra(!excludeExtra)} style={{ ...extrasBtnStyle(excludeExtra), fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap' }}><Wallet size={12} /> Extras</button>
             </div>
           </>
         ) : (
@@ -435,8 +439,8 @@ export default function Gastos() {
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setExcludeViajes(!excludeViajes)} style={{ ...excludeBtnStyle(excludeViajes), display: 'inline-flex', alignItems: 'center', gap: 6 }}><Plane size={13} /> Viajes</button>
-                <button onClick={() => setExcludeExtra(!excludeExtra)} style={{ ...excludeBtnStyle(excludeExtra), display: 'inline-flex', alignItems: 'center', gap: 6 }}><Wallet size={13} /> Extraordinarios</button>
+                <button onClick={() => setExcludeViajes(!excludeViajes)} style={viajesBtnStyle(excludeViajes)}><Plane size={13} /> Viajes</button>
+                <button onClick={() => setExcludeExtra(!excludeExtra)} style={extrasBtnStyle(excludeExtra)}><Wallet size={13} /> Extraordinarios</button>
               </div>
             </div>
           </>

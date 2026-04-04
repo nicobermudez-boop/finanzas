@@ -296,7 +296,7 @@ select { color-scheme: inherit; }
 .icc{padding:14px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border-default);background:var(--bg-secondary);cursor:pointer;transition:all .2s;text-align:center;font-family:inherit}
 .icc:hover{border-color:var(--text-muted)}
 .icc.s{border-color:var(--color-income);background:var(--color-income-bg)}
-.icc .ici{font-size:24px;margin-bottom:4px}
+.icc .ici{font-size:24px;margin-bottom:4px;display:flex;justify-content:center;align-items:center}
 .icc .icn{font-size:14px;font-weight:600;color:var(--text-secondary)}
 .icc.s .icn{color:var(--color-income)}
 .ist{display:flex;gap:6px}

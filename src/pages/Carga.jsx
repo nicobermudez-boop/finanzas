@@ -9,12 +9,13 @@ import RecentTransactions from '../components/RecentTransactions'
 import { fmtForm as fmt, fmtInput } from '../lib/format'
 import useIsMobile from '../hooks/useIsMobile'
 import { SkeletonForm } from '../components/Skeleton'
+import { Wallet, TrendingUp, Home, MoreHorizontal, RefreshCw, Star } from 'lucide-react'
 
 const INCOME_CONCEPTS = [
-  { name: 'Sueldo', icon: '💰', defaultSubtype: 'recurrente' },
-  { name: 'Bono', icon: '🎯', defaultSubtype: 'extraordinario' },
-  { name: 'Rentas', icon: '🏠', defaultSubtype: 'recurrente' },
-  { name: 'Otros', icon: '📋', defaultSubtype: 'extraordinario' }
+  { name: 'Sueldo', Icon: Wallet, color: '#22C55E', defaultSubtype: 'recurrente' },
+  { name: 'Bono', Icon: TrendingUp, color: '#3B82F6', defaultSubtype: 'extraordinario' },
+  { name: 'Rentas', Icon: Home, color: '#8B5CF6', defaultSubtype: 'recurrente' },
+  { name: 'Otros', Icon: MoreHorizontal, color: '#94A3B8', defaultSubtype: 'extraordinario' }
 ]
 
 const PAY_METHODS = [
@@ -595,7 +596,11 @@ export default function Carga() {
               {INCOME_CONCEPTS.map(ic => (
                 <button key={ic.name} className={`icc ${incCon === ic.name ? 's' : ''}`}
                   onClick={() => { setIncCon(ic.name); setTimeout(() => aRef.current?.focus(), 50) }}>
-                  <div className="ici">{ic.icon}</div>
+                  <div className="ici">
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: ic.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ic.Icon size={20} color={ic.color} strokeWidth={1.75} />
+                    </div>
+                  </div>
                   <div className="icn">{ic.name}</div>
                 </button>))}
             </div></div>
@@ -603,9 +608,9 @@ export default function Carga() {
           {incCon && <div className="sec sec-in"><div className="sl">Tipo</div>
             <div className="ist">
               <button className={`isb ${incSub === 'recurrente' ? 's' : ''}`}
-                onClick={() => setIncSub('recurrente')}>🔄 Recurrente</button>
+                onClick={() => setIncSub('recurrente')} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><RefreshCw size={12} /> Recurrente</button>
               <button className={`isb ${incSub === 'extraordinario' ? 's' : ''}`}
-                onClick={() => setIncSub('extraordinario')}>⭐ Extraordinario</button>
+                onClick={() => setIncSub('extraordinario')} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Star size={12} /> Extraordinario</button>
             </div></div>}
         </>}
 

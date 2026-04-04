@@ -259,7 +259,7 @@ export default function Dashboard() {
                 cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid', whiteSpace: 'nowrap',
                 ...(excludeViajes
                   ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
-                  : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+                  : { background: 'rgba(6,182,212,0.1)', borderColor: 'rgba(6,182,212,0.3)', color: '#06B6D4' }),
               }}><Plane size={12} /> Viajes</button>
               <button onClick={() => setExcludeExtra(!excludeExtra)} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -267,7 +267,7 @@ export default function Dashboard() {
                 cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid', whiteSpace: 'nowrap',
                 ...(excludeExtra
                   ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
-                  : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+                  : { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: '#22C55E' }),
               }}><Wallet size={12} /> Extras</button>
             </div>
           </>
@@ -303,7 +303,7 @@ export default function Dashboard() {
                   cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid',
                   ...(excludeViajes
                     ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
-                    : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+                    : { background: 'rgba(6,182,212,0.1)', borderColor: 'rgba(6,182,212,0.3)', color: '#06B6D4' }),
                 }}><Plane size={13} /> Viajes</button>
                 <button onClick={() => setExcludeExtra(!excludeExtra)} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -311,7 +311,7 @@ export default function Dashboard() {
                   cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', border: '1px solid',
                   ...(excludeExtra
                     ? { background: 'var(--color-expense-bg)', borderColor: 'var(--color-expense-border)', color: 'var(--color-expense-light)', textDecoration: 'line-through' }
-                    : { background: 'var(--color-accent-bg)', borderColor: 'rgba(139,92,246,0.3)', color: 'var(--color-accent)' }),
+                    : { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: '#22C55E' }),
                 }}><Wallet size={13} /> Extraordinarios</button>
               </div>
             </div>
