@@ -187,6 +187,9 @@ export default function Carga() {
   const [isRec, setIsRec] = usePersistedState('carga-isRec', false)
   const [rFreq, setRFreq] = usePersistedState('carga-rFreq', 'monthly')
   const [rPer, setRPer] = usePersistedState('carga-rPer', 12)
+  const [toast, setToast] = useState(null)
+  const [toastExit, setToastExit] = useState(false)
+  const [saved, setSaved] = useState(false)
   const PERSISTED_KEYS = useMemo(() => [
     'carga-type', 'carga-amount', 'carga-cur', 'carga-date', 'carga-person',
     'carga-catId', 'carga-subId', 'carga-conId', 'carga-pay', 'carga-inst',
